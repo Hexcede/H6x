@@ -18,7 +18,7 @@ Metatables and function environments (fenvs) are important to take into account 
 
 ### Importing H6x
 
-1. Download a release from [releases](/releases) or see [Building from source](#building-from-source).
+1. Download a release from [releases](../../releases) or see [Building from source](#building-from-source).
 2. Import the rbxm you downloaded/built into your game.
 3. Run the game, and ensure that H6x does not display any errors in the Output view (Roblox Studio -> View -> Output)
 
