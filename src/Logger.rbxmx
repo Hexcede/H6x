@@ -1,0 +1,64 @@
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
+	<Meta name="ExplicitAutoJoints">true</Meta>
+	<External>null</External>
+	<External>nil</External>
+	<Item class="ModuleScript" referent="RBX306DB6CAD62F4E9ABF6E608A1440FC2E">
+		<Properties>
+			<BinaryString name="AttributesSerialize"><![CDATA[AwAAAAUAAABMYWJlbAIDAAAASDZ4CgAAAE1heFZlcmJvc2UDAAkAAABWZXJib3NpdHkGAAAA
+AAAAAEA=]]></BinaryString>
+			<Content name="LinkedSource"><null></null></Content>
+			<string name="Name">Logger</string>
+			<string name="ScriptGuid">{DDB87131-50D4-4CC3-BA3D-E069CD69E21E}</string>
+			<ProtectedString name="Source"><![CDATA[local Logger = {
+	Verbosity = {
+		-- Important logs
+		Error = 1;
+		Notice = 1;
+		
+		-- Warn/info
+		Warn = 2;
+		Debug = 3;
+		
+		-- For value poisoning
+		Poison = 4;
+	}
+}
+
+function Logger:LogWith(logLabel, verbosity, doLog, ...)
+	if not script:GetAttribute("MaxVerbose") and script:GetAttribute("Verbosity") < verbosity then
+		return
+	end
+	
+	doLog(string.format("[%s:%s/L%d]", script:GetAttribute("Label"), logLabel, verbosity), ...)
+end
+
+function Logger:Log(logLabel, verbosity, ...)
+	self:LogWith(logLabel, verbosity, print, ...)
+end
+
+-- Lower-level debug output
+function Logger:Debug(...)
+	self:LogWith("DEBUG", self.Verbosity.Debug, print, ...)
+end
+
+-- Simple warnings (unimportant)
+function Logger:Warn(...)
+	self:LogWith("WARN", self.Verbosity.Warn, warn, ...)
+end
+
+-- Most important
+function Logger:Error(...)
+	self:LogWith("ERROR", self.Verbosity.Error, function(...)
+		error(table.concat({...}, " "), 2)
+	end, ...)
+end
+function Logger:Notice(...)
+	self:LogWith("NOTICE", self.Verbosity.Notice, warn, ...)
+end
+
+return Logger]]></ProtectedString>
+			<int64 name="SourceAssetId">-1</int64>
+			<BinaryString name="Tags"></BinaryString>
+		</Properties>
+	</Item>
+</roblox>
