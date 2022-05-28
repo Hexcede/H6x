@@ -1,0 +1,14 @@
+{
+	"name": "H6x - Tests",
+	"tree": {
+		"$className": "DataModel",
+
+		"ServerScriptService": {
+			"$className": "ServerScriptService",
+
+			"H6x": {
+				"$path": "./src"
+			}
+		}
+	}
+}
