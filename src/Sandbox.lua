@@ -92,22 +92,31 @@ return (function(Sandbox)
 			local poisonMap = self.poisonMap
 			local real = poisonMap.Real
 
-			local realObject = real[object]
-			if realObject ~= nil then
-				object = realObject
+			-- If object is a primitive, return it raw
+			if CONST.PRIMITIVES[type(object)] then
+				return object
 			end
+
+			local realObject = real[object]
+			if realObject == nil then
+				realObject = object
+			end
+			-- if realObject ~= nil then
+			-- 	object = realObject
+			-- end
 
 			local imported = self.imported
 
-			local import = imported[object]
-			if import == DO_NOT_IMPORT_OR_EXPORT then
+			local import = imported[realObject]
+			if rawequal(import, DO_NOT_IMPORT_OR_EXPORT) then
 				return object
 			end
 
 			if not import then
-				if type(object) == "function" then
+				if type(realObject) == "function" then
 					local fenv = getfenv(object)
 					if fenv == self.env then
+						imported[realObject] = object
 						imported[object] = object
 						return object
 					end
@@ -152,8 +161,6 @@ return (function(Sandbox)
 
 					local poisoned = self:Poison(self.BaseEnvironment:Apply(import))
 
-					local realObject = realObject == nil and object or realObject
-
 					real[import] = realObject
 					if poisoned then
 						real[poisoned] = realObject
@@ -188,30 +195,38 @@ return (function(Sandbox)
 
 		function Sandbox:Export(object)
 			local exported = self.exported
+			local imported = self.imported
 			local poisonMap = self.poisonMap
 			local real = poisonMap.Real
 
 			local realObject = real[object]
-			if realObject ~= nil then
-				object = realObject
+			if realObject == nil then
+				realObject = object
 			end
+			-- if realObject ~= nil then
+			-- 	object = realObject
+			-- end
 
-			local export = exported[object]
+			local export = exported[realObject]
 			if export == DO_NOT_IMPORT_OR_EXPORT then
 				return object
 			end
 
 			if not export then
-				if type(object) == "function" then
-					local fenv = getfenv(object)
-					if fenv == self.env then
-						exported[object] = object
-						return object
+				if type(realObject) == "function" then
+					-- local fenv = getfenv(realObject)
+					-- if fenv == self.env then
+					-- 	exported[realObject] = object
+					-- 	return object
+					-- end
+					if imported[object] then
+						object = imported[object]
 					end
 
 					local table = table
 					local pairs = pairs
 					local rawequal = rawequal
+
 					function export(...)
 						self:CheckTermination()
 
@@ -222,7 +237,7 @@ return (function(Sandbox)
 							end
 
 							if not rawequal(arg, nil) then
-								-- Import input arguments if they can be
+								-- Import input arguments if they can be imported
 								arg = self:Import(arg) or arg
 								-- Then poison the result
 								args[i] = self:Poison(arg)
@@ -248,12 +263,10 @@ return (function(Sandbox)
 					end
 					self.BaseEnvironment:Apply(export)
 
-					local realObject = realObject ~= nil and realObject or object
+					-- local realObject = realObject ~= nil and realObject or object
 
-					--real[export] = realObject
-
-					--exported[realObject] = export
-					exported[object] = export
+					real[export] = realObject
+					exported[realObject] = export
 
 					return export
 				elseif type(object) == "table" or type(object) == "userdata" then
@@ -324,7 +337,7 @@ return (function(Sandbox)
 				end
 				return self:FilterValue(proxy, errorLevel, restrictionErrorLevel)
 			elseif primitive == "function" then
-				local proxy = function(...)
+				local function proxy(...)
 					self:CheckTermination()
 					local results = table.pack(object(...))
 					self:CheckTermination()
@@ -385,7 +398,10 @@ return (function(Sandbox)
 			local realValue = real[value]
 			local redirections = self.Redirections
 
-			return redirections[value] or redirections[realValue]
+			if pcall(next, redirections, value) or redirections[value] then
+				return redirections[value]
+			end
+			return redirections[realValue]
 		end
 
 		-- Redirect with a callback instead of directly (Slower)
@@ -483,55 +499,20 @@ return (function(Sandbox)
 		-- Default redirects
 		function Sandbox:RedirectorDefaults()
 			if not self.DefaultsRedirected then
-				-- Backup compatability
+				-- TODO: Emulate wait/delay & task.wait/task.delay
+				-- Currently, not doing so results in an error in some code ("cannot resume dead coroutine")
 
-				local iwait = self:Import(function(waitTime)
-					local thread = coroutine.running()
-					delay(waitTime, function(...)
-						if not self.Terminated then
-							coroutine.resume(thread, ...)
-						end
-					end)
-					return coroutine.yield()
-				end)
+				-- Require emulation
+				local realRequire = require
+				local function require(...)
+					local requireMode = self.RequireMode
+					local modules = self.Modules
 
-				local idelay = self:Import(function(waitTime, callback)
-					return delay(waitTime, function(...)
-						if not self.Terminated then
-							return callback(...)
-						end
-					end)
-				end)
-
-				local iresume = self:Import(function(...)
-					if not self.Terminated then
-						return coroutine.resume(...)
-					end
-				end)
-
-				self:Redirect(coroutine.resume, iresume)
-				self:Redirect(delay, idelay)
-				self:Redirect(wait, iwait)
-
-				self:Redirect(ipairs, self:Import(ipairs))
-				self:Redirect(pairs, self:Import(pairs))
-
-				local itype = self:Import(type)
-
-				self:Redirect(type, itype)
-				self:Redirect(typeof, self:Import(typeof))
-
-				-- Require functionality
-				local requireMode = self.RequireMode
-				local modules = self.Modules
-
-				local irequire = self:Import(function(...)
-					if requireMode == "disable" then
+					if requireMode == "disable" or requireMode == "disabled" then
 						return error("Require is disabled.", nil)
 					end
 
 					local requireTarget = ...
-
 					if modules[requireTarget] then
 						return self:Import(modules[requireTarget])
 					end
@@ -543,7 +524,7 @@ return (function(Sandbox)
 							end
 						end
 
-						local results = table.pack(pcall(require, ...))
+						local results = table.pack(pcall(realRequire, requireTarget, select(2, ...)))
 
 						if not results[1] then
 							error(results[2], 2)
@@ -555,10 +536,9 @@ return (function(Sandbox)
 						return Util.unpack(results)
 					elseif requireMode == "vanilla" then
 						if type(requireTarget) ~= "string" then
-							return error(string.format("bad argument #1 to 'require' (string expected, got %s)", itype(requireTarget)), 2)
+							return error(string.format("bad argument #1 to 'require' (string expected, got %s)", type(requireTarget)), 2)
 						end
-
-						return error(string.format("module '%s' not found:\n        no file '.\\%s.lua'", requireTarget, requireTarget), 2)
+						return error(string.format("module '%s' not found:\n        no file './%s.lua'", requireTarget, requireTarget), 2)
 					elseif requireMode == "custom" then
 						local requireHook = self.CustomRequire
 
@@ -576,9 +556,8 @@ return (function(Sandbox)
 						end
 					end
 					return nil
-				end)
-
-				self:Redirect(require, irequire)
+				end
+				self:Redirect(realRequire, self:Import(require))
 
 				-- Redirect base environment
 				local baseEnv = self.BaseEnvironment
@@ -589,8 +568,10 @@ return (function(Sandbox)
 		end
 
 		-- Custom requires
-		function Sandbox:SetRequireMode(mode)
-			if type(mode) ~= "string" then
+		function Sandbox:SetRequireMode(mode: string | (...any) -> ...any)
+			assert(type(mode) == "string" or type(mode) == "function", "Mode must be a string or a function.")
+
+			if type(mode) == "function" then
 				self.CustomRequire = mode
 				mode = "custom"
 			end
