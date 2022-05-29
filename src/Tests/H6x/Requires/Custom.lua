@@ -1,7 +1,22 @@
 return function(H6x)
 	local sandbox = H6x.Sandbox.new()
 	
-	--sandbox:SetRequireMode(function()
-		
-	--end)
+	sandbox:SetRequireMode(function(module)
+		if module == "ABC" then
+			return 123
+		elseif module == "DEF" then
+			return 456
+		end
+		return false 
+	end)
+
+	assert(sandbox:ExecuteString([[
+		return require("ABC") == 123
+	]]), "Custom require mode is not working (1)")
+	assert(sandbox:ExecuteString([[
+		return require("DEF") == 456
+	]]), "Custom require mode is not working (2)")
+	assert(sandbox:ExecuteString([[
+		return require("GHI") == false
+	]]), "Custom require mode is not working (3)")
 end
