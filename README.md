@@ -18,13 +18,29 @@ Metatables and function environments (fenvs) are important to take into account 
 
 ### Importing H6x
 
-1. Download a release from [releases](../../releases) or see [Building from source](#building-from-source).
-2. Import the rbxm you downloaded/built into your game.
+1. Download a release from [releases](../../releases), build an rbxm with the steps in [Building from source](#building-from-source), or see [Integrating with Rojo projects](##integrating-with-rojo-projects).
+2. Import the rbxm into your game.
 3. Run the game, and ensure that H6x does not display any errors in the Output view (Roblox Studio -> View -> Output)
 
 ### Setting up H6x in your game
 
 TBD
+
+## Integrating with Rojo projects
+
+Alternatively, H6x can be integrated directly within your Rojo projects.
+Simply place H6x somewhere outside of your project tree, and target `default.project.json`:
+```json
+{
+	...
+	"H6x": {
+		"$path": "../path/to/H6x/default.project.json"
+	}
+	...
+}
+```
+
+You can do this from another project file inside of your `src` tree, or from your main project file.
 
 ## Building from source
 
