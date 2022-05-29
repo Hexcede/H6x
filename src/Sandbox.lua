@@ -633,8 +633,8 @@ return (function(Sandbox)
 			end
 		end
 
-		-- Blacklisting functions
-		function Sandbox:Blacklist(value)
+		-- Blacklists a value by reference
+		function Sandbox:BlacklistReference(value: any)
 			local poisonMap = self.poisonMap
 			local real = poisonMap.Real
 
@@ -649,7 +649,8 @@ return (function(Sandbox)
 			self.blacklist[value] = true
 		end
 
-		function Sandbox:Except(value)
+		-- Creates an exception by reference
+		function Sandbox:ExceptReference(value: any)
 			local poisonMap = self.poisonMap
 			local real = poisonMap.Real
 
@@ -664,73 +665,8 @@ return (function(Sandbox)
 			self.blacklist[value] = BLACKLIST_EXCEPTION
 		end
 
-		function Sandbox:BlacklistType(typeName)
-			assert(type(typeName) == "string", "Sandbox:BlacklistType() typeName must be a string")
-
-			self.blacklist[typeName] = true
-		end
-
-		function Sandbox:BlacklistPrimitive(primitive)
-			assert(type(primitive) == "string", "Sandbox:BlacklistPrimitive() primitive must be a string")
-
-			self.blacklist[CONST.PRIMITIVES[primitive]] = true
-		end
-
-		function Sandbox:BlacklistClassName(className)
-			assert(type(className) == "string", "Sandbox:BlacklistClassName() className must be a string")
-
-			self.classBlacklist[className] = true
-		end
-
-		function Sandbox:ExceptClassName(className)
-			assert(type(className) == "string", "Sandbox:ExceptClassName() className must be a string")
-
-			self.classBlacklist[className] = BLACKLIST_EXCEPTION
-		end
-
-		function Sandbox:UnblacklistClassName(className)
-			assert(type(className) == "string", "Sandbox:UnblacklistClassName() className must be a string")
-
-			self.classBlacklist[className] = nil
-		end
-
-		function Sandbox:BlacklistClass(className)
-			assert(type(className) == "string", "Sandbox:BlacklistClass() className must be a string")
-
-			self.classTypeBlacklist[className] = true
-		end
-
-		function Sandbox:ExceptClass(className)
-			assert(type(className) == "string", "Sandbox:ExceptClass() className must be a string")
-
-			self.classTypeBlacklist[className] = BLACKLIST_EXCEPTION
-		end
-
-		function Sandbox:UnblacklistClass(className)
-			assert(type(className) == "string", "Sandbox:UnblacklistClass() className must be a string")
-
-			self.classTypeBlacklist[className] = nil
-		end
-
-		function Sandbox:BlacklistTree(rootInstance)
-			assert(typeof(rootInstance) == "Instance", "Sandbox:BlacklistTree() rootInstance must be an Instance")
-
-			self.rootBlacklist[rootInstance] = true
-		end
-
-		function Sandbox:ExceptTree(rootInstance)
-			assert(typeof(rootInstance) == "Instance", "Sandbox:ExceptTree() rootInstance must be an Instance")
-
-			self.rootBlacklist[rootInstance] = BLACKLIST_EXCEPTION
-		end
-
-		function Sandbox:UnblacklistTree(rootInstance)
-			assert(typeof(rootInstance) == "Instance", "Sandbox:UnblacklistTree() rootInstance must be an Instance")
-
-			self.rootBlacklist[rootInstance] = nil
-		end
-
-		function Sandbox:Unblacklist(valueOrType)
+		-- Forgets a by-reference rule
+		function Sandbox:ForgetReference(valueOrType: any)
 			local poisonMap = self.poisonMap
 			local real = poisonMap.Real
 
@@ -739,11 +675,112 @@ return (function(Sandbox)
 			self.blacklist[valueOrType] = nil
 		end
 
-		function Sandbox:UnblacklistPrimitive(primitive)
+		-- Blacklists by typeof
+		function Sandbox:BlacklistType(typeName: string)
+			assert(type(typeName) == "string", "typeName must be a string")
+
+			self.blacklist[typeName] = true
+		end
+
+		-- Creates an exception by typeof
+		function Sandbox:ExceptType(typeName: string)
+			assert(type(typeName) == "string", "typeName must be a string")
+
+			self.blacklist[typeName] = BLACKLIST_EXCEPTION
+		end
+
+		-- Forgets a rule by typeof
+		function Sandbox:ForgetType(typeName: string)
+			assert(type(typeName) == "string", "typeName must be a string")
+
+			self.blacklist[typeName] = nil
+		end
+
+		-- Blacklists by primitive
+		function Sandbox:BlacklistPrimitive(primitive: string)
+			assert(type(primitive) == "string", "primitive must be a string")
+
+			self.blacklist[CONST.PRIMITIVES[primitive]] = true
+		end
+
+		-- Creates an exception by primitive
+		function Sandbox:ExceptPrimitive(primitive: string)
+			assert(type(primitive) == "string", "primitive must be a string")
+
+			self.blacklist[CONST.PRIMITIVES[primitive]] = BLACKLIST_EXCEPTION
+		end
+
+		-- Forgets a rule by primitive
+		function Sandbox:ForgetPrimitive(primitive: string)
+			assert(type(primitive) == "string", "primitive must be a string")
+
 			self.blacklist[CONST.PRIMITIVES[primitive]] = nil
 		end
 
-		function Sandbox:InBlacklist(value, errorLevel, restrictionErrorLevel)
+		-- Blacklists by .ClassName property
+		function Sandbox:BlacklistClassName(className: string)
+			assert(type(className) == "string", "className must be a string")
+
+			self.classBlacklist[className] = true
+		end
+
+		-- Creates an exception by .ClassName property
+		function Sandbox:ExceptClassName(className: string)
+			assert(type(className) == "string", "className must be a string")
+
+			self.classBlacklist[className] = BLACKLIST_EXCEPTION
+		end
+
+		-- Forgets a .ClassName rule
+		function Sandbox:ForgetClassName(className: string)
+			assert(type(className) == "string", "className must be a string")
+
+			self.classBlacklist[className] = nil
+		end
+
+		-- Blacklists by :IsA()
+		function Sandbox:BlacklistClass(class: string)
+			assert(type(class) == "string", "class must be a string")
+
+			self.classTypeBlacklist[class] = true
+		end
+
+		-- Creates an exception by :IsA()
+		function Sandbox:ExceptClass(class: string)
+			assert(type(class) == "string", "class must be a string")
+
+			self.classTypeBlacklist[class] = BLACKLIST_EXCEPTION
+		end
+
+		-- Forgets a :IsA() rule
+		function Sandbox:ForgetClass(class: string)
+			assert(type(class) == "string", "class must be a string")
+
+			self.classTypeBlacklist[class] = nil
+		end
+
+		-- Blacklists by heirarchy (blacklists rootInstance & all descendants)
+		function Sandbox:BlacklistTree(rootInstance: Instance)
+			assert(typeof(rootInstance) == "Instance", "rootInstance must be an Instance")
+
+			self.rootBlacklist[rootInstance] = true
+		end
+
+		-- Creates an exception by heirarchy (excepts rootInstance & all descendants)
+		function Sandbox:ExceptTree(rootInstance: Instance)
+			assert(typeof(rootInstance) == "Instance", "rootInstance must be an Instance")
+
+			self.rootBlacklist[rootInstance] = BLACKLIST_EXCEPTION
+		end
+
+		-- Forgets a heirarchy rule
+		function Sandbox:ForgetTree(rootInstance: Instance)
+			assert(typeof(rootInstance) == "Instance", "rootInstance must be an Instance")
+
+			self.rootBlacklist[rootInstance] = nil
+		end
+
+		function Sandbox:IsBlacklisted(value, errorLevel, restrictionErrorLevel)
 			if errorLevel then
 				errorLevel = errorLevel > 0 and (errorLevel + 1) or errorLevel
 			end
@@ -895,7 +932,7 @@ return (function(Sandbox)
 				restrictionErrorLevel = restrictionErrorLevel > 0 and (restrictionErrorLevel + 1) or restrictionErrorLevel
 			end
 
-			if not self:InBlacklist(value, errorLevel, restrictionErrorLevel) then
+			if not self:IsBlacklisted(value, errorLevel, restrictionErrorLevel) then
 				--local redirections = self.Redirections
 
 				--local redirect = redirections[value]
