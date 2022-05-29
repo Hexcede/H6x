@@ -1,7 +1,7 @@
 return function(H6x)
 	local sandbox = H6x.Sandbox.new()
 	
-	sandbox:Blacklist(require)
+	sandbox:BlacklistReference(require)
 	sandbox:DenyInstances()
 
 	-- Example of how to except certain classes
