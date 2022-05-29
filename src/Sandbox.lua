@@ -1129,6 +1129,8 @@ return (function(Sandbox)
 
 			return sandbox
 		end
+
+		return Empty
 	end)({})
 	Sandbox.Limited = (function(Limited)
 		function Limited.new(options)
@@ -1200,6 +1202,8 @@ return (function(Sandbox)
 
 			return sandbox
 		end
+
+		return Limited
 	end)({})
 	Sandbox.User = (function(User)
 		function User.new(options)
@@ -1210,6 +1214,8 @@ return (function(Sandbox)
 
 			return sandbox
 		end
+
+		return User
 	end)({})
 	Sandbox.Roblox = (function(Roblox)
 		function Roblox.new(options)
@@ -1230,6 +1236,8 @@ return (function(Sandbox)
 
 			return sandbox
 		end
+
+		return Roblox
 	end)({})
 	Sandbox.Vanilla = (function(Vanilla)
 		function Vanilla.new(options)
@@ -1237,6 +1245,9 @@ return (function(Sandbox)
 				local tabCopy = {}
 				for index, value in pairs(tab) do
 					tabCopy[index] = value
+				end
+				if table.isfrozen(tab) then
+					table.freeze(tabCopy)
 				end
 				return tabCopy
 			end
@@ -1341,12 +1352,12 @@ return (function(Sandbox)
 
 					local module = ipackage.loaded[name]
 					if module then
-						return
+						return module
 					end
 
 					module = getModule(getfenv(0), name)
 					if module then
-						return
+						return module
 					end
 
 					local segments = name:split(".")
@@ -1376,10 +1387,18 @@ return (function(Sandbox)
 
 			ipackage.loaded = sandbox.Modules
 
-			sandbox:AddModule("")
+			sandbox:AddModule("table", options.env.table)
+			sandbox:AddModule("string", options.env.string)
+			sandbox:AddModule("math", options.env.math)
+			sandbox:AddModule("coroutine", options.env.coroutine)
+			sandbox:AddModule("os", options.env.os)
+			sandbox:AddModule("io", options.env.io)
+			sandbox:AddModule("debug", options.env.debug)
 
 			return sandbox
 		end
+
+		return Vanilla
 	end)({})
 	-- TODO
 	Sandbox.Plugin = (function(Plugin)
@@ -1391,6 +1410,8 @@ return (function(Sandbox)
 
 			return sandbox
 		end
+
+		return Plugin
 	end)({})
 
 	function Sandbox.new(options)
