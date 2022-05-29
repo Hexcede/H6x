@@ -1,6 +1,8 @@
 return function(H6x)
 	local sandbox = H6x.Sandbox.new()
 	
+	sandbox:AllowInstances()
+	
 	sandbox:Blacklist(require)
 	sandbox:SetScript(Instance.new("Script"))
 	

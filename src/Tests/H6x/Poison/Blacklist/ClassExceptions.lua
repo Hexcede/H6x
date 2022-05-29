@@ -2,7 +2,7 @@ return function(H6x)
 	local sandbox = H6x.Sandbox.new()
 	
 	sandbox:Blacklist(require)
-	sandbox:BlacklistClass("Instance") -- Due to the order blacklists are checked, BlacklistType will prevent you from excepting classes
+	sandbox:DenyInstances()
 
 	-- Example of how to except certain classes
 	sandbox:ExceptClassName("Model") -- Only Model classes, but, not things like Workspace which extend Model

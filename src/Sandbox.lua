@@ -610,6 +610,16 @@ return (function(Sandbox)
 			self.Modules[target] = self:Import(module)
 		end
 
+		-- Allows Instances to be accessed
+		function Sandbox:AllowInstances()
+			self.allowsInstances = true
+		end
+
+		-- Prevents the usage of Instances (default)
+		function Sandbox:DenyInstances()
+			self.allowsInstances = false
+		end
+
 		-- Default restrictions
 		function Sandbox:RestrictionDefaults()
 			if not self.DefaultsRestricted then
@@ -863,6 +873,13 @@ return (function(Sandbox)
 						end
 						return blacklisted
 					end
+
+					if not self.allowsInstances then
+						if errorLevel then
+							error("Attempt to access blacklisted instance", errorLevel)
+						end
+						return true
+					end
 				end
 			end
 
@@ -1089,7 +1106,7 @@ return (function(Sandbox)
 
 			local sandbox = Sandbox.new(options)
 
-			sandbox:BlacklistClass("Instance")
+			sandbox:DenyInstances()
 			sandbox:SetRequireMode("vanilla")
 
 			return sandbox
@@ -1099,7 +1116,7 @@ return (function(Sandbox)
 		function Limited.new(options)
 			local sandbox = Sandbox.new(options)
 
-			sandbox:BlacklistClass("Instance")
+			sandbox:DenyInstances()
 			sandbox:Blacklist(workspace)
 			sandbox:Blacklist(game)
 			sandbox:ExceptClass("Folder")
@@ -1336,7 +1353,7 @@ return (function(Sandbox)
 			sandbox = Sandbox.new(options)
 
 			-- TODO: Compatability
-			sandbox:BlacklistClass("Instance")
+			sandbox:DenyInstances()
 			sandbox:SetRequireMode("vanilla")
 
 			ipackage.loaded = sandbox.Modules
@@ -1428,6 +1445,8 @@ return (function(Sandbox)
 				Redirections = redirections,
 				RestrictedValues = restrictedValues,
 
+				allowsInstances = false,
+
 				imported = imported,
 				exported = exported,
 
@@ -1479,11 +1498,13 @@ return (function(Sandbox)
 
 						local real = poisonMap.Real[object] or object
 
-						if not imported[value] then
-							imported[value] = DO_NOT_IMPORT_OR_EXPORT
-						end
-						if not exported[value] then
-							exported[value] = DO_NOT_IMPORT_OR_EXPORT
+						if not rawequal(value, nil) then
+							if not imported[value] then
+								imported[value] = DO_NOT_IMPORT_OR_EXPORT
+							end
+							if not exported[value] then
+								exported[value] = DO_NOT_IMPORT_OR_EXPORT
+							end
 						end
 
 						--if imported[real] then

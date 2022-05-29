@@ -3,7 +3,7 @@ return function(H6x)
 		NoRedirectorDefaults = true
 	})
 	
-	-- Note: pairs & ipairs work as intended in this build without the redirector defaults
+	sandbox:AllowInstances()
 	
 	local dict = sandbox:Poison({
 		[workspace] = game
@@ -13,7 +13,7 @@ return function(H6x)
 		game
 	})
 	
-	sandbox:RedirectorDefaults()
+	-- sandbox:RedirectorDefaults()
 
 	assert(sandbox:ExecuteString([[
 		return function(...)
@@ -22,7 +22,7 @@ return function(H6x)
 			end
 			return false
 		end
-	]])(dict), "Redirector defaults didn't resolve pairs issue")
+	]])(dict), "pairs did not loop over table.")
 
 	assert(sandbox:ExecuteString([[
 		return function(...)
@@ -31,5 +31,5 @@ return function(H6x)
 			end
 			return false
 		end
-	]])(array), "Redirector defaults didn't resolve ipairs issue")
+	]])(array), "ipairs did not loop over array.")
 end

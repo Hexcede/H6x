@@ -1,6 +1,8 @@
 return function(H6x, fastMode)
 	local sandbox = H6x.Sandbox.new()
 
+	sandbox:AllowInstances()
+	
 	task.spawn(function()
 		sandbox:ExecuteString([[
 			thread = coroutine.running()

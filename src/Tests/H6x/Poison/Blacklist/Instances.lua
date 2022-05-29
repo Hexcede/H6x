@@ -1,6 +1,8 @@
 return function(H6x)
 	local sandbox = H6x.Sandbox.new()
 
+	sandbox:AllowInstances()
+	
 	assert(sandbox:ExecuteString([[
 		return game
 	]]), "Failed to access 'game' prior to test blacklist")

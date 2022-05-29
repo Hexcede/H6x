@@ -1,5 +1,7 @@
 return function(H6x)
 	local sandbox = H6x.Sandbox.new()
+
+	sandbox:AllowInstances()
 	
 	assert(sandbox:ExecuteString([[
 		return script:IsA("BaseScript") -- Script is not a module
