@@ -15,14 +15,14 @@ return (function(SandboxActivity)
 					Name:Track(func, name)
 
 					-- Create tables for argument/result names
-					local argNames = table.create(#args)
-					local resultNames = table.create(#results)
+					local argNames = table.create(args.n)
+					local resultNames = table.create(results.n)
 
 					-- Get the names of the arguments and results
-					for i=1, args.n or #args do
+					for i=1, args.n do
 						argNames[i] = Name:Get(args[i], true)
 					end
-					for i=1, results.n or #results do
+					for i=1, results.n do
 						resultNames[i] = Name:Get(results[i], true)
 					end
 

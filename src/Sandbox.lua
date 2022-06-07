@@ -329,7 +329,10 @@ return (function(Sandbox)
 					local results = table.pack(object(...))
 					self:CheckTermination()
 
-					self:ActivityEvent("Call", object, table.pack(...), table.move(results, 1, results.n, 1, table.create(results.n)))
+					local args = table.pack(...)
+					local logResults = table.move(results, 1, results.n, 1, table.create(results.n))
+					logResults.n = results.n
+					self:ActivityEvent("Call", object, args, logResults)
 
 					for i, result in pairs(results) do
 						if i == "n" then
