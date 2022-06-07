@@ -3,6 +3,25 @@ local CONST = require(script.Parent:WaitForChild("Constants"))
 
 return (function(SandboxActivity)
 	local class = (function(SandboxActivity)
+		local function deepClone(item, clones)
+			clones = clones or {}
+			if CONST.PRIMITIVES[type(item)] then
+				return item
+			end
+			if clones[item] then
+				return clones[item]
+			end
+
+			if type(item) == "table" then
+				local clone = table.create(#item)
+				clones[item] = clone
+				for key, value in pairs(item) do
+					clone[key] = deepClone(value, clones)
+				end
+			end
+			return item
+		end
+
 		SandboxActivity.Call = (function(Call)
 			local class = (function(Call)
 				function Call:Track(func, args, results)
@@ -12,17 +31,20 @@ return (function(SandboxActivity)
 					local nargs, varArg, name, source = debug.info(func, "ans")
 
 					-- Track the called function's name
-					Name:Track(func, name)
+					-- Name:Track(func, name)
+					Name:Track(func, Name:Get(func))
+
+					-- string.format("from %s %s(%d%s)", source or "UNKNOWN", name, nargs, varArg and ", ..." or "")
 
 					-- Create tables for argument/result names
-					local argNames = table.create(#args)
-					local resultNames = table.create(#results)
+					local argNames = table.create(args.n)
+					local resultNames = table.create(results.n)
 
 					-- Get the names of the arguments and results
-					for i=1, args.n or #args do
+					for i=1, args.n do
 						argNames[i] = Name:Get(args[i], true)
 					end
-					for i=1, results.n or #results do
+					for i=1, results.n do
 						resultNames[i] = Name:Get(results[i], true)
 					end
 
@@ -32,7 +54,9 @@ return (function(SandboxActivity)
 						func = func,
 						funcName = Name:Get(func),
 						rawName = name,
+						args = deepClone(args),
 						argNames = argNames,
+						results = deepClone(results),
 						resultNames = resultNames
 					})
 				end
@@ -64,9 +88,9 @@ return (function(SandboxActivity)
 					-- Add an activity entry
 					activity:AddEntry({
 						event = "get",
-						object = object,
-						index = index,
-						value = value,
+						object = deepClone(object),
+						index = deepClone(index),
+						value = deepClone(value),
 						objectName = Name:Get(object),
 						indexName = Name:Get(index),
 						valueName = Name:Get(value),
@@ -100,8 +124,8 @@ return (function(SandboxActivity)
 					-- Add an activity entry
 					activity:AddEntry({
 						event = "getGlobal",
-						index = index,
-						value = value,
+						index = deepClone(index),
+						value = deepClone(value),
 						indexName = Name:Get(index),
 						valueName = Name:Get(value),
 					})
@@ -134,9 +158,9 @@ return (function(SandboxActivity)
 					-- Add an activity entry
 					activity:AddEntry({
 						event = "set",
-						object = object,
-						index = index,
-						value = value,
+						object = deepClone(object),
+						index = deepClone(index),
+						value = deepClone(value),
 						objectName = Name:Get(object),
 						indexName = Name:Get(index),
 						valueName = Name:Get(value),
@@ -170,8 +194,8 @@ return (function(SandboxActivity)
 					-- Add an activity entry
 					activity:AddEntry({
 						event = "setGlobal",
-						index = index,
-						value = value,
+						index = deepClone(index),
+						value = deepClone(value),
 						indexName = Name:Get(index),
 						valueName = Name:Get(value),
 					})
@@ -243,6 +267,12 @@ return (function(SandboxActivity)
 						return object
 					elseif typeName == "number" then
 						return tostring(object)
+					elseif typeName == "function" then
+						local nargs, varArg, name, source = debug.info(object, "ans")
+						if name == "" then
+							name = "<anonymous>"
+						end
+						return string.format("<function from %s %s(%d%s)>", source or "UNKNOWN", name, nargs, varArg and ", ..." or "")
 					end
 
 					local nameTable = {"<", typeName, " ", tostring((names[object] or object)), ">"}
@@ -285,6 +315,67 @@ return (function(SandboxActivity)
 		function SandboxActivity:GenerateReport(format)
 			local history = self.History
 
+			local stack = {}
+			local stackEntries = {}
+			local report = {}
+
+			local poisonMap = self.Sandbox.poisonMap
+
+			local function findSafe(tab, value)
+				local realValue = poisonMap.Real[value] or value
+				for index, otherValue in ipairs(tab) do
+					local realOtherValue = poisonMap.Real[otherValue] or otherValue
+					if rawequal(realOtherValue, realValue) then
+						return index
+					end
+				end
+			end
+			local function getIndex(stackIndex)
+				return string.format("<%d>", #stack - (stackIndex - 1))
+			end
+			local function findStackIndexName(value)
+				local stackIndex = findSafe(stack, value)
+				return stackIndex and getIndex(stackIndex)
+			end
+
+			local function tableToString(tab, getName, defaultName, indent, circular)
+				circular = circular or {}
+				if circular[tab] then
+					return "[Circular]"
+				end
+				indent = indent or ""
+				local nextIndent = string.format("%s%s", indent, "\t")
+
+				local result = {}
+
+				if not next(tab) then
+					return string.format("%s%s", indent, defaultName or tostring(tab))
+					-- return string.format("%s{}", indent)
+				end
+
+				circular[tab] = true
+				for index, value in pairs(tab) do
+					local indexType = typeof(index)
+					local valueType = typeof(value)
+					local indexName = circular[index] and self.Name:Get(index, true) or getName(index, self.Name:Get(index, true))
+					local valueName = circular[value] and self.Name:Get(value, true) or getName(value, self.Name:Get(value, true))
+					indexName = indexType == "table" and tableToString(index, getName, indexName, nextIndent, circular) or indexName
+					valueName = valueType == "table" and tableToString(value, getName, valueName, valueType, circular) or valueName
+
+					if indexType == "string" and not string.match(index, "%W") then
+						table.insert(result, string.format("%s%s = %s", indent, index, valueName))
+					else
+						table.insert(result, string.format("%s[%s] = %s", indent, indexName, valueName))
+					end
+				end
+				circular[tab] = nil
+
+				return string.format("%s{\n%s%s\n%s} :: %s",
+					indent, nextIndent, table.concat(result, string.format(",\n%s", nextIndent)), indent,
+					defaultName or self.Name:Get(tab, true)
+				)
+			end
+
 			if not format or format == "data" then
 				-- Return the raw activity data (Can be manipulated externally)
 				return history
@@ -293,51 +384,135 @@ return (function(SandboxActivity)
 					--[[
 						get game
 						get <Previous>.GetService
-						call <Previous>(<Previous-1>, "RunService") @ game:GetService("RunService")
+						call <Previous>(<Previous-1>, "RunService") :: game:GetService("RunService")
 						get <Instance RunService "Run Service">.Heartbeat
 						get <Previous>.Connect
-						call <Previous>(<Previous-1>, <function 0xffffffff>) @ <Instance RunService "Run Service">.Heartbeat:Connect(<function 0xffffffff>)
+						call <Previous>(<Previous-1>, <function 0xffffffff>) :: <Instance RunService "Run Service">.Heartbeat:Connect(<function 0xffffffff>)
 					--]]
 
-				-- TODO: Stack tracking & generating simplified
-
-				local report = {}
-				for _, entry in ipairs(history) do
-					local line = {}
-
-					local event = entry.event
-					table.insert(line, event)
-
-					if event == "get" or event == "set" then
-						local objectName = entry.objectName
-						local indexName = entry.indexName
-						local valueName = entry.valueName
-
-						table.insert(line, string.format("%s.%s = %s", objectName, indexName, valueName))
-					elseif event == "getGlobal" or event == "setGlobal" then
-						local indexName = entry.indexName
-						local valueName = entry.valueName
-
-						table.insert(line, string.format("%s = %s", indexName, valueName))
-					elseif event == "call" then
-						local funcName = entry.funcName
-						local argNames = entry.argNames
-						local resultNames = entry.resultNames
-
-						table.insert(line, string.format("%s(%s)", funcName, table.concat(argNames, ", ")))
-
-						table.insert(line, "\n\treturn")
-						table.insert(line, table.concat(resultNames, ", "))
+				local function getName(value, default)
+					if type(value) == "table" then
+						return tableToString(value, getName, default)
+					else
+						local stackIndexName = findStackIndexName(value)
+						if stackIndexName then
+							return stackIndexName
+						end
 					end
-
-					table.insert(report, table.concat(line, " "))
+					return default
 				end
-				return table.concat(report, "\n")
+				local asFormat = " as <%d>"
+
+				for _, entry in ipairs(history) do
+					local event = entry.event
+					local object = entry.object
+					local index = entry.index
+					local value = entry.value
+					local objectName = entry.objectName
+					local indexName = entry.indexName
+					local valueName = entry.valueName
+
+					local func = entry.func
+					local funcName = entry.funcName
+
+					if event == "getGlobal" then
+						local isNotPrimitive = not CONST.PRIMITIVES[type(value)]
+						table.insert(report, string.format("getGlobal %s%s", indexName, isNotPrimitive and string.format(asFormat, #stack + 1) or ""))
+						if isNotPrimitive then
+							table.insert(stack, 1, value)
+							table.insert(stackEntries, 1, entry)
+						end
+					elseif event == "setGlobal" then
+						indexName = getName(index, indexName)
+						valueName = getName(value, valueName)
+						table.insert(report, string.format("setGlobal %s = %s", indexName, valueName))
+					elseif event == "get" then
+						objectName = getName(object, objectName)
+						indexName = getName(index, indexName)
+						local isNotPrimitive = not CONST.PRIMITIVES[type(value)]
+						table.insert(report, string.format("get %s.%s%s", objectName, indexName, isNotPrimitive and string.format(asFormat, #stack + 1) or ""))
+						if isNotPrimitive then
+							table.insert(stack, 1, value)
+							table.insert(stackEntries, 1, entry)
+						end
+					elseif event == "set" then
+						objectName = getName(object, objectName)
+						indexName = getName(index, indexName)
+						valueName = getName(value, valueName)
+						table.insert(report, string.format("set %s.%s = %s", objectName, indexName, valueName))
+					elseif event == "call" then
+						local methodEntry--[[ = {
+							event = "get",
+							object = nil,
+							index = objectName,
+							value = object,
+							objectName = "???",
+							indexName = objectName,
+							valueName = "???"
+						}]]
+						local stackIndex = findSafe(stack, func)
+						if stackIndex then
+							methodEntry = stackEntries[stackIndex]
+							funcName = getIndex(stackIndex)
+						end
+						-- funcName = findStackIndexName(func) or funcName
+						local argNames = entry.argNames
+						local args = entry.args
+						local resultNames = entry.resultNames
+						local results = entry.results
+
+						for i=1, args.n do
+							local arg = args[i]
+							argNames[i] = getName(arg, argNames[i])
+						end
+						local stackIncr = 0
+						for i=1, results.n do
+							local result = results[i]
+							resultNames[i] = getName(result, resultNames[i])
+							local isNotPrimitive = not CONST.PRIMITIVES[type(result)]
+							if isNotPrimitive then
+								stackIncr += 1
+							end
+							resultNames[i] = string.format("%s%s", resultNames[i], isNotPrimitive and string.format(asFormat, #stack + stackIncr) or "")
+						end
+
+						if methodEntry and methodEntry.event == "get" then
+							local objectName = methodEntry.objectName
+							objectName = getName(methodEntry.object, objectName)
+							local indexName = methodEntry.indexName
+							indexName = getName(methodEntry.index, indexName)
+
+							local realArg1 = poisonMap.Real[args[1]] or args[1]
+							local realObj = poisonMap.Real[methodEntry.object] or methodEntry.object
+
+							if realArg1 == realObj then
+								-- Method call
+								table.remove(argNames, 1)
+								table.insert(report, string.format("call %s:%s(%s)\n -> %s", objectName, indexName, table.concat(argNames, ", "), table.concat(resultNames, ", ")))
+							else
+								-- Dot call
+								table.insert(report, string.format("call %s.%s(%s)\n -> %s", objectName, indexName, table.concat(argNames, ", "), table.concat(resultNames, ", ")))
+							end
+						-- elseif methodEntry and methodEntry.event == "call" then
+
+						else
+							-- Use the raw call string
+							table.insert(report, string.format("call %s(%s)\n -> %s", funcName, table.concat(argNames, ", "), table.concat(resultNames, ", ")))
+						end
+						for _, result in ipairs(results) do
+							if not CONST.PRIMITIVES[type(result)] then
+								table.insert(stack, 1, result)
+								table.insert(stackEntries, 1, entry)
+							end
+						end
+					end
+				end
 			elseif format == "bytecode" then
 				-- TODO: Generate vanilla lua bytecode
 			elseif format == "lua" then
 				-- TODO: Generate lua code (Not original source, just a readable log which can be executed to "replay" events)
 			end
+			return table.concat(report, "\n")
 		end
 
 		return SandboxActivity
