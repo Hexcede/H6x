@@ -31,7 +31,10 @@ return (function(SandboxActivity)
 					local nargs, varArg, name, source = debug.info(func, "ans")
 
 					-- Track the called function's name
-					Name:Track(func, name)
+					-- Name:Track(func, name)
+					Name:Track(func, Name:Get(func))
+
+					-- string.format("from %s %s(%d%s)", source or "UNKNOWN", name, nargs, varArg and ", ..." or "")
 
 					-- Create tables for argument/result names
 					local argNames = table.create(args.n)
@@ -264,6 +267,12 @@ return (function(SandboxActivity)
 						return object
 					elseif typeName == "number" then
 						return tostring(object)
+					elseif typeName == "function" then
+						local nargs, varArg, name, source = debug.info(object, "ans")
+						if name == "" then
+							name = "<anonymous>"
+						end
+						return string.format("<function from %s %s(%d%s)>", source or "UNKNOWN", name, nargs, varArg and ", ..." or "")
 					end
 
 					local nameTable = {"<", typeName, " ", tostring((names[object] or object)), ">"}
