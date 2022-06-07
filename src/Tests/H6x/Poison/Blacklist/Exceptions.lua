@@ -3,26 +3,26 @@ return function(H6x)
 
 	sandbox:BlacklistType("Instance")
 
-	sandbox:Except(game)
+	sandbox:ExceptReference(game)
 	assert(sandbox:ExecuteString([[
 		return game
 	]]), "Didn't except 'game' from test blacklist")
 	assert(not sandbox:ExecuteString([[
 		return workspace
 	]]), "Excepted 'workspace' from test blacklist when it wasn't supposed to be")
-	sandbox:Unblacklist(game) -- Clear blacklist entry (Removes the exception)
+	sandbox:ForgetReference(game) -- Clear blacklist entry (Removes the exception)
 
-	sandbox:Except(workspace)
+	sandbox:ExceptReference(workspace)
 	assert(sandbox:ExecuteString([[
 		return workspace
 	]]), "Didn't except 'workspace' from test blacklist")
 	assert(not sandbox:ExecuteString([[
 		return game
 	]]), "Excepted 'game' from test blacklist when it wasn't supposed to be")
-	sandbox:Unblacklist(workspace) -- Clear blacklist entry (Removes the exception)
+	sandbox:ForgetReference(workspace) -- Clear blacklist entry (Removes the exception)
 	
 	local folder = Instance.new("Folder")
-	sandbox:Except(folder)
+	sandbox:ExceptReference(folder)
 	assert(sandbox:ExecuteString([[
 		return ...
 	]], folder), "Didn't except 'workspace' from test blacklist")

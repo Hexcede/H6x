@@ -92,22 +92,31 @@ return (function(Sandbox)
 			local poisonMap = self.poisonMap
 			local real = poisonMap.Real
 
-			local realObject = real[object]
-			if realObject ~= nil then
-				object = realObject
+			-- If object is a primitive, return it raw
+			if CONST.PRIMITIVES[type(object)] then
+				return object
 			end
+
+			local realObject = real[object]
+			if realObject == nil then
+				realObject = object
+			end
+			-- if realObject ~= nil then
+			-- 	object = realObject
+			-- end
 
 			local imported = self.imported
 
-			local import = imported[object]
-			if import == DO_NOT_IMPORT_OR_EXPORT then
+			local import = imported[realObject]
+			if rawequal(import, DO_NOT_IMPORT_OR_EXPORT) then
 				return object
 			end
 
 			if not import then
-				if type(object) == "function" then
+				if type(realObject) == "function" then
 					local fenv = getfenv(object)
 					if fenv == self.env then
+						imported[realObject] = object
 						imported[object] = object
 						return object
 					end
@@ -152,8 +161,6 @@ return (function(Sandbox)
 
 					local poisoned = self:Poison(self.BaseEnvironment:Apply(import))
 
-					local realObject = realObject == nil and object or realObject
-
 					real[import] = realObject
 					if poisoned then
 						real[poisoned] = realObject
@@ -188,30 +195,38 @@ return (function(Sandbox)
 
 		function Sandbox:Export(object)
 			local exported = self.exported
+			local imported = self.imported
 			local poisonMap = self.poisonMap
 			local real = poisonMap.Real
 
 			local realObject = real[object]
-			if realObject ~= nil then
-				object = realObject
+			if realObject == nil then
+				realObject = object
 			end
+			-- if realObject ~= nil then
+			-- 	object = realObject
+			-- end
 
-			local export = exported[object]
+			local export = exported[realObject]
 			if export == DO_NOT_IMPORT_OR_EXPORT then
 				return object
 			end
 
 			if not export then
-				if type(object) == "function" then
-					local fenv = getfenv(object)
-					if fenv == self.env then
-						exported[object] = object
-						return object
+				if type(realObject) == "function" then
+					-- local fenv = getfenv(realObject)
+					-- if fenv == self.env then
+					-- 	exported[realObject] = object
+					-- 	return object
+					-- end
+					if imported[object] then
+						object = imported[object]
 					end
 
 					local table = table
 					local pairs = pairs
 					local rawequal = rawequal
+
 					function export(...)
 						self:CheckTermination()
 
@@ -222,7 +237,7 @@ return (function(Sandbox)
 							end
 
 							if not rawequal(arg, nil) then
-								-- Import input arguments if they can be
+								-- Import input arguments if they can be imported
 								arg = self:Import(arg) or arg
 								-- Then poison the result
 								args[i] = self:Poison(arg)
@@ -248,12 +263,10 @@ return (function(Sandbox)
 					end
 					self.BaseEnvironment:Apply(export)
 
-					local realObject = realObject ~= nil and realObject or object
+					-- local realObject = realObject ~= nil and realObject or object
 
-					--real[export] = realObject
-
-					--exported[realObject] = export
-					exported[object] = export
+					real[export] = realObject
+					exported[realObject] = export
 
 					return export
 				elseif type(object) == "table" or type(object) == "userdata" then
@@ -324,7 +337,7 @@ return (function(Sandbox)
 				end
 				return self:FilterValue(proxy, errorLevel, restrictionErrorLevel)
 			elseif primitive == "function" then
-				local proxy = function(...)
+				local function proxy(...)
 					self:CheckTermination()
 					local results = table.pack(object(...))
 					self:CheckTermination()
@@ -388,7 +401,10 @@ return (function(Sandbox)
 			local realValue = real[value]
 			local redirections = self.Redirections
 
-			return redirections[value] or redirections[realValue]
+			if pcall(next, redirections, value) or redirections[value] then
+				return redirections[value]
+			end
+			return redirections[realValue]
 		end
 
 		-- Redirect with a callback instead of directly (Slower)
@@ -486,55 +502,20 @@ return (function(Sandbox)
 		-- Default redirects
 		function Sandbox:RedirectorDefaults()
 			if not self.DefaultsRedirected then
-				-- Backup compatability
+				-- TODO: Emulate wait/delay & task.wait/task.delay
+				-- Currently, not doing so results in an error in some code ("cannot resume dead coroutine")
 
-				local iwait = self:Import(function(waitTime)
-					local thread = coroutine.running()
-					delay(waitTime, function(...)
-						if not self.Terminated then
-							coroutine.resume(thread, ...)
-						end
-					end)
-					return coroutine.yield()
-				end)
+				-- Require emulation
+				local realRequire = require
+				local function require(...)
+					local requireMode = self.RequireMode
+					local modules = self.Modules
 
-				local idelay = self:Import(function(waitTime, callback)
-					return delay(waitTime, function(...)
-						if not self.Terminated then
-							return callback(...)
-						end
-					end)
-				end)
-
-				local iresume = self:Import(function(...)
-					if not self.Terminated then
-						return coroutine.resume(...)
-					end
-				end)
-
-				self:Redirect(coroutine.resume, iresume)
-				self:Redirect(delay, idelay)
-				self:Redirect(wait, iwait)
-
-				self:Redirect(ipairs, self:Import(ipairs))
-				self:Redirect(pairs, self:Import(pairs))
-
-				local itype = self:Import(type)
-
-				self:Redirect(type, itype)
-				self:Redirect(typeof, self:Import(typeof))
-
-				-- Require functionality
-				local requireMode = self.RequireMode
-				local modules = self.Modules
-
-				local irequire = self:Import(function(...)
-					if requireMode == "disable" then
+					if requireMode == "disable" or requireMode == "disabled" then
 						return error("Require is disabled.", nil)
 					end
 
 					local requireTarget = ...
-
 					if modules[requireTarget] then
 						return self:Import(modules[requireTarget])
 					end
@@ -546,7 +527,7 @@ return (function(Sandbox)
 							end
 						end
 
-						local results = table.pack(pcall(require, ...))
+						local results = table.pack(pcall(realRequire, requireTarget, select(2, ...)))
 
 						if not results[1] then
 							error(results[2], 2)
@@ -558,10 +539,9 @@ return (function(Sandbox)
 						return Util.unpack(results)
 					elseif requireMode == "vanilla" then
 						if type(requireTarget) ~= "string" then
-							return error(string.format("bad argument #1 to 'require' (string expected, got %s)", itype(requireTarget)), 2)
+							return error(string.format("bad argument #1 to 'require' (string expected, got %s)", type(requireTarget)), 2)
 						end
-
-						return error(string.format("module '%s' not found:\n        no file '.\\%s.lua'", requireTarget, requireTarget), 2)
+						return error(string.format("module '%s' not found:\n        no file './%s.lua'", requireTarget, requireTarget), 2)
 					elseif requireMode == "custom" then
 						local requireHook = self.CustomRequire
 
@@ -579,9 +559,8 @@ return (function(Sandbox)
 						end
 					end
 					return nil
-				end)
-
-				self:Redirect(require, irequire)
+				end
+				self:Redirect(realRequire, self:Import(require))
 
 				-- Redirect base environment
 				local baseEnv = self.BaseEnvironment
@@ -592,8 +571,10 @@ return (function(Sandbox)
 		end
 
 		-- Custom requires
-		function Sandbox:SetRequireMode(mode)
-			if type(mode) ~= "string" then
+		function Sandbox:SetRequireMode(mode: string | (...any) -> ...any)
+			assert(type(mode) == "string" or type(mode) == "function", "Mode must be a string or a function.")
+
+			if type(mode) == "function" then
 				self.CustomRequire = mode
 				mode = "custom"
 			end
@@ -636,8 +617,8 @@ return (function(Sandbox)
 			end
 		end
 
-		-- Blacklisting functions
-		function Sandbox:Blacklist(value)
+		-- Blacklists a value by reference
+		function Sandbox:BlacklistReference(value: any)
 			local poisonMap = self.poisonMap
 			local real = poisonMap.Real
 
@@ -652,7 +633,8 @@ return (function(Sandbox)
 			self.blacklist[value] = true
 		end
 
-		function Sandbox:Except(value)
+		-- Creates an exception by reference
+		function Sandbox:ExceptReference(value: any)
 			local poisonMap = self.poisonMap
 			local real = poisonMap.Real
 
@@ -667,73 +649,8 @@ return (function(Sandbox)
 			self.blacklist[value] = BLACKLIST_EXCEPTION
 		end
 
-		function Sandbox:BlacklistType(typeName)
-			assert(type(typeName) == "string", "Sandbox:BlacklistType() typeName must be a string")
-
-			self.blacklist[typeName] = true
-		end
-
-		function Sandbox:BlacklistPrimitive(primitive)
-			assert(type(primitive) == "string", "Sandbox:BlacklistPrimitive() primitive must be a string")
-
-			self.blacklist[CONST.PRIMITIVES[primitive]] = true
-		end
-
-		function Sandbox:BlacklistClassName(className)
-			assert(type(className) == "string", "Sandbox:BlacklistClassName() className must be a string")
-
-			self.classBlacklist[className] = true
-		end
-
-		function Sandbox:ExceptClassName(className)
-			assert(type(className) == "string", "Sandbox:ExceptClassName() className must be a string")
-
-			self.classBlacklist[className] = BLACKLIST_EXCEPTION
-		end
-
-		function Sandbox:UnblacklistClassName(className)
-			assert(type(className) == "string", "Sandbox:UnblacklistClassName() className must be a string")
-
-			self.classBlacklist[className] = nil
-		end
-
-		function Sandbox:BlacklistClass(className)
-			assert(type(className) == "string", "Sandbox:BlacklistClass() className must be a string")
-
-			self.classTypeBlacklist[className] = true
-		end
-
-		function Sandbox:ExceptClass(className)
-			assert(type(className) == "string", "Sandbox:ExceptClass() className must be a string")
-
-			self.classTypeBlacklist[className] = BLACKLIST_EXCEPTION
-		end
-
-		function Sandbox:UnblacklistClass(className)
-			assert(type(className) == "string", "Sandbox:UnblacklistClass() className must be a string")
-
-			self.classTypeBlacklist[className] = nil
-		end
-
-		function Sandbox:BlacklistTree(rootInstance)
-			assert(typeof(rootInstance) == "Instance", "Sandbox:BlacklistTree() rootInstance must be an Instance")
-
-			self.rootBlacklist[rootInstance] = true
-		end
-
-		function Sandbox:ExceptTree(rootInstance)
-			assert(typeof(rootInstance) == "Instance", "Sandbox:ExceptTree() rootInstance must be an Instance")
-
-			self.rootBlacklist[rootInstance] = BLACKLIST_EXCEPTION
-		end
-
-		function Sandbox:UnblacklistTree(rootInstance)
-			assert(typeof(rootInstance) == "Instance", "Sandbox:UnblacklistTree() rootInstance must be an Instance")
-
-			self.rootBlacklist[rootInstance] = nil
-		end
-
-		function Sandbox:Unblacklist(valueOrType)
+		-- Forgets a by-reference rule
+		function Sandbox:ForgetReference(valueOrType: any)
 			local poisonMap = self.poisonMap
 			local real = poisonMap.Real
 
@@ -742,11 +659,112 @@ return (function(Sandbox)
 			self.blacklist[valueOrType] = nil
 		end
 
-		function Sandbox:UnblacklistPrimitive(primitive)
+		-- Blacklists by typeof
+		function Sandbox:BlacklistType(typeName: string)
+			assert(type(typeName) == "string", "typeName must be a string")
+
+			self.blacklist[typeName] = true
+		end
+
+		-- Creates an exception by typeof
+		function Sandbox:ExceptType(typeName: string)
+			assert(type(typeName) == "string", "typeName must be a string")
+
+			self.blacklist[typeName] = BLACKLIST_EXCEPTION
+		end
+
+		-- Forgets a rule by typeof
+		function Sandbox:ForgetType(typeName: string)
+			assert(type(typeName) == "string", "typeName must be a string")
+
+			self.blacklist[typeName] = nil
+		end
+
+		-- Blacklists by primitive
+		function Sandbox:BlacklistPrimitive(primitive: string)
+			assert(type(primitive) == "string", "primitive must be a string")
+
+			self.blacklist[CONST.PRIMITIVES[primitive]] = true
+		end
+
+		-- Creates an exception by primitive
+		function Sandbox:ExceptPrimitive(primitive: string)
+			assert(type(primitive) == "string", "primitive must be a string")
+
+			self.blacklist[CONST.PRIMITIVES[primitive]] = BLACKLIST_EXCEPTION
+		end
+
+		-- Forgets a rule by primitive
+		function Sandbox:ForgetPrimitive(primitive: string)
+			assert(type(primitive) == "string", "primitive must be a string")
+
 			self.blacklist[CONST.PRIMITIVES[primitive]] = nil
 		end
 
-		function Sandbox:InBlacklist(value, errorLevel, restrictionErrorLevel)
+		-- Blacklists by .ClassName property
+		function Sandbox:BlacklistClassName(className: string)
+			assert(type(className) == "string", "className must be a string")
+
+			self.classBlacklist[className] = true
+		end
+
+		-- Creates an exception by .ClassName property
+		function Sandbox:ExceptClassName(className: string)
+			assert(type(className) == "string", "className must be a string")
+
+			self.classBlacklist[className] = BLACKLIST_EXCEPTION
+		end
+
+		-- Forgets a .ClassName rule
+		function Sandbox:ForgetClassName(className: string)
+			assert(type(className) == "string", "className must be a string")
+
+			self.classBlacklist[className] = nil
+		end
+
+		-- Blacklists by :IsA()
+		function Sandbox:BlacklistClass(class: string)
+			assert(type(class) == "string", "class must be a string")
+
+			self.classTypeBlacklist[class] = true
+		end
+
+		-- Creates an exception by :IsA()
+		function Sandbox:ExceptClass(class: string)
+			assert(type(class) == "string", "class must be a string")
+
+			self.classTypeBlacklist[class] = BLACKLIST_EXCEPTION
+		end
+
+		-- Forgets a :IsA() rule
+		function Sandbox:ForgetClass(class: string)
+			assert(type(class) == "string", "class must be a string")
+
+			self.classTypeBlacklist[class] = nil
+		end
+
+		-- Blacklists by heirarchy (blacklists rootInstance & all descendants)
+		function Sandbox:BlacklistTree(rootInstance: Instance)
+			assert(typeof(rootInstance) == "Instance", "rootInstance must be an Instance")
+
+			self.rootBlacklist[rootInstance] = true
+		end
+
+		-- Creates an exception by heirarchy (excepts rootInstance & all descendants)
+		function Sandbox:ExceptTree(rootInstance: Instance)
+			assert(typeof(rootInstance) == "Instance", "rootInstance must be an Instance")
+
+			self.rootBlacklist[rootInstance] = BLACKLIST_EXCEPTION
+		end
+
+		-- Forgets a heirarchy rule
+		function Sandbox:ForgetTree(rootInstance: Instance)
+			assert(typeof(rootInstance) == "Instance", "rootInstance must be an Instance")
+
+			self.rootBlacklist[rootInstance] = nil
+		end
+
+		function Sandbox:IsBlacklisted(value, errorLevel, restrictionErrorLevel)
 			if errorLevel then
 				errorLevel = errorLevel > 0 and (errorLevel + 1) or errorLevel
 			end
@@ -898,7 +916,7 @@ return (function(Sandbox)
 				restrictionErrorLevel = restrictionErrorLevel > 0 and (restrictionErrorLevel + 1) or restrictionErrorLevel
 			end
 
-			if not self:InBlacklist(value, errorLevel, restrictionErrorLevel) then
+			if not self:IsBlacklisted(value, errorLevel, restrictionErrorLevel) then
 				--local redirections = self.Redirections
 
 				--local redirect = redirections[value]
@@ -1114,6 +1132,8 @@ return (function(Sandbox)
 
 			return sandbox
 		end
+
+		return Empty
 	end)({})
 	Sandbox.Limited = (function(Limited)
 		function Limited.new(options)
@@ -1185,6 +1205,8 @@ return (function(Sandbox)
 
 			return sandbox
 		end
+
+		return Limited
 	end)({})
 	Sandbox.User = (function(User)
 		function User.new(options)
@@ -1195,6 +1217,8 @@ return (function(Sandbox)
 
 			return sandbox
 		end
+
+		return User
 	end)({})
 	Sandbox.Roblox = (function(Roblox)
 		function Roblox.new(options)
@@ -1215,6 +1239,8 @@ return (function(Sandbox)
 
 			return sandbox
 		end
+
+		return Roblox
 	end)({})
 	Sandbox.Vanilla = (function(Vanilla)
 		function Vanilla.new(options)
@@ -1222,6 +1248,9 @@ return (function(Sandbox)
 				local tabCopy = {}
 				for index, value in pairs(tab) do
 					tabCopy[index] = value
+				end
+				if table.isfrozen(tab) then
+					table.freeze(tabCopy)
 				end
 				return tabCopy
 			end
@@ -1326,12 +1355,12 @@ return (function(Sandbox)
 
 					local module = ipackage.loaded[name]
 					if module then
-						return
+						return module
 					end
 
 					module = getModule(getfenv(0), name)
 					if module then
-						return
+						return module
 					end
 
 					local segments = name:split(".")
@@ -1361,21 +1390,217 @@ return (function(Sandbox)
 
 			ipackage.loaded = sandbox.Modules
 
-			sandbox:AddModule("")
+			sandbox:AddModule("table", options.env.table)
+			sandbox:AddModule("string", options.env.string)
+			sandbox:AddModule("math", options.env.math)
+			sandbox:AddModule("coroutine", options.env.coroutine)
+			sandbox:AddModule("os", options.env.os)
+			sandbox:AddModule("io", options.env.io)
+			sandbox:AddModule("debug", options.env.debug)
 
 			return sandbox
 		end
+
+		return Vanilla
 	end)({})
 	-- TODO
 	Sandbox.Plugin = (function(Plugin)
+		local pluginAPI = {}
+
+		pluginAPI.CollisionEnabled = true
+		pluginAPI.GridSize = 1
+
+		local pluginState = setmetatable({}, CONST.WEAK_METATABLES.Keys)
+
+		function pluginAPI:GetSelectedRibbonTool()
+			return Enum.RibbonTool.None
+		end
+		function pluginAPI:GetJoinMode()
+			return Enum.JointCreationMode.None
+		end
+
+		function pluginAPI:Activate(exclusiveMouse: boolean)
+			local state = pluginState[self]
+			if not state then
+				state = {}
+				pluginState[self] = state
+			end
+
+			state.ExclusiveMouse = exclusiveMouse
+			state.Active = true
+		end
+		function pluginAPI:Deactivate()
+			local state = pluginState[self]
+			if not state then
+				state = {}
+				pluginState[self] = state
+			end
+
+			state.ExclusiveMouse = nil
+			state.Active = false
+		end
+		function pluginAPI:IsActivated()
+			local state = pluginState[self]
+			if not state then
+				state = {}
+				pluginState[self] = state
+			end
+
+			return state.Active
+		end
+		function pluginAPI:IsActivatedWithExclusiveMouse()
+			local state = pluginState[self]
+			if not state then
+				state = {}
+				pluginState[self] = state
+			end
+
+			return state.Active and state.ExclusiveMouse
+		end
+
+		function pluginAPI:Union(parts)
+			-- if Plugin.UnionOperations then
+			-- 	-- TODO
+			-- end
+		end
+		function pluginAPI:Separate(parts)
+			-- if Plugin.UnionOperations then
+			-- 	-- TODO
+			-- end
+		end
+		function pluginAPI:Negate(parts)
+			-- if Plugin.UnionOperations then
+			-- 	-- TODO
+			-- end
+		end
+
+		function pluginAPI:SelectRibbonTool(tool: Enum.RibbonTool, position: UDim2)
+			
+		end
+
+		function pluginAPI:OpenScript(script: LuaSourceContainer, lineNumber: number)
+			
+		end
+		function pluginAPI:OpenWikiPage(url: string)
+			
+		end
+
+		function pluginAPI:CreateDockWidgetPluginGui(pluginGuiId: string, dockWidgetPluginGuiInfo: DockWidgetPluginGuiInfo): DockWidgetPluginGui
+			-- TODO
+		end
+		function pluginAPI:CreatePluginAction(actionId: string, text: string, statusTip: string, iconName: string, allowBinding: boolean): PluginAction
+			-- TODO
+		end
+		function pluginAPI:CreatePluginMenu(id: string, title: string, icon: string): PluginMenu
+			-- TODO
+		end
+		function pluginAPI:CreateToolbar(name: string): PluginToolbar
+			-- TODO
+		end
+		function pluginAPI:GetMouse(): PluginMouse
+			-- TODO (Require client-side execution & grab player mouse)
+			-- Or emulate a PluginMouse via remotes
+		end
+
+		function pluginAPI:PromptForExistingAssetId(assetType: string): number
+			return -1
+		end
+		function pluginAPI:PromptSaveSelection(suggestedFileName: string): boolean
+			return false
+		end
+
+		function pluginAPI:StartDrag()
+
+		end
+		function pluginAPI:ImportFbxRig()
+			return nil
+		end
+		function pluginAPI:ImportFbxAnimation()
+			return nil
+		end
+
+		-- Plugin setting emulation
+		local pluginSettings = setmetatable({}, CONST.WEAK_METATABLES.Keys)
+		function pluginAPI:GetSetting(key: string): any
+			local localSettings = pluginSettings[self]
+			if not localSettings then
+				localSettings = {}
+				pluginSettings[self] = localSettings
+			end
+			
+			return localSettings[key]
+		end
+		function pluginAPI:SetSetting(key: string, value: any)
+			local localSettings = pluginSettings[self]
+			if not localSettings then
+				localSettings = {}
+				pluginSettings[self] = localSettings
+			end
+			
+			localSettings[key] = value
+		end
+
+		local deactivationEvent = Instance.new("BindableEvent")
+		local unloadEvent = Instance.new("BindableEvent")
+
+		local events = {
+			Deactivation = deactivationEvent.Event,
+			Unloading = unloadEvent.Event
+		}
+
+		setmetatable(pluginAPI, {
+			__index = function(plugin, index)
+				if events[index] then
+					return events[index]
+				end
+				if rawequal(index, "Parent") then
+					return nil
+				end
+				error(string.format("%s is not a valid member of Plugin \"%s\"", tostring(index), tostring(plugin)), 2)
+			end,
+			__newindex = function(plugin, index)
+				if rawequal(index, "Parent") then
+					return
+				end
+				if events[index] then
+					error(string.format("Unable to assign property %s. Property is read only", tostring(index)), 2)
+				end
+				error(string.format("%s is not a valid member of Plugin \"%s\"", tostring(index), tostring(plugin)), 2)
+			end
+		})
+
+		Plugin.EmulatedAPI = pluginAPI
+
 		function Plugin.new(options)
 			local sandbox = Sandbox.new(options)
 
 			-- TODO: Compatability
 			-- TODO: Define "plugin" (Finish definition API)
 
+			local plugin = newproxy(true)
+
+			local meta = getmetatable(plugin)
+
+			meta.__index = pluginAPI
+			meta.__newindex = pluginAPI
+			meta.__tostring = function()
+				return "plugin"
+			end
+
+			meta.__metatable = "The metatable is locked"
+
+			sandbox.BaseEnvironment.env.plugin = plugin
+
+			sandbox.Plugin = plugin
+
+			function sandbox:BindToPlayer(player: Player)
+				-- TODO: Client-side input emulation
+			end
+
 			return sandbox
 		end
+
+		return Plugin
 	end)({})
 
 	function Sandbox.new(options)
