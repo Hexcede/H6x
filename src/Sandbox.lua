@@ -1385,8 +1385,8 @@ return (function(Sandbox)
 		local classTypeBlacklist = setmetatable({}, CONST.WEAK_METATABLES.Keys)
 		local rootBlacklist = setmetatable({}, CONST.WEAK_METATABLES.Keys)
 
-		local imported = setmetatable({}, CONST.WEAK_METATABLES.Keys)
-		local exported = setmetatable({}, CONST.WEAK_METATABLES.Keys)
+		local imported = {}--setmetatable({}, CONST.WEAK_METATABLES.Keys)
+		local exported = {}--setmetatable({}, CONST.WEAK_METATABLES.Keys)
 		local Environments = setmetatable({}, CONST.WEAK_METATABLES.Keys)
 
 		-- Basic metatable to automatically fill tables in for any nil value
