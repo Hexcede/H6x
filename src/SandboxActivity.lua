@@ -3,6 +3,25 @@ local CONST = require(script.Parent:WaitForChild("Constants"))
 
 return (function(SandboxActivity)
 	local class = (function(SandboxActivity)
+		local function deepClone(item, clones)
+			clones = clones or {}
+			if CONST.PRIMITIVES[type(item)] then
+				return item
+			end
+			if clones[item] then
+				return clones[item]
+			end
+
+			if type(item) == "table" then
+				local clone = table.create(#item)
+				clones[item] = clone
+				for key, value in pairs(item) do
+					clone[key] = deepClone(value, clones)
+				end
+			end
+			return item
+		end
+
 		SandboxActivity.Call = (function(Call)
 			local class = (function(Call)
 				function Call:Track(func, args, results)
@@ -32,7 +51,9 @@ return (function(SandboxActivity)
 						func = func,
 						funcName = Name:Get(func),
 						rawName = name,
+						args = deepClone(args),
 						argNames = argNames,
+						results = deepClone(results),
 						resultNames = resultNames
 					})
 				end
@@ -64,9 +85,9 @@ return (function(SandboxActivity)
 					-- Add an activity entry
 					activity:AddEntry({
 						event = "get",
-						object = object,
-						index = index,
-						value = value,
+						object = deepClone(object),
+						index = deepClone(index),
+						value = deepClone(value),
 						objectName = Name:Get(object),
 						indexName = Name:Get(index),
 						valueName = Name:Get(value),
@@ -100,8 +121,8 @@ return (function(SandboxActivity)
 					-- Add an activity entry
 					activity:AddEntry({
 						event = "getGlobal",
-						index = index,
-						value = value,
+						index = deepClone(index),
+						value = deepClone(value),
 						indexName = Name:Get(index),
 						valueName = Name:Get(value),
 					})
@@ -134,9 +155,9 @@ return (function(SandboxActivity)
 					-- Add an activity entry
 					activity:AddEntry({
 						event = "set",
-						object = object,
-						index = index,
-						value = value,
+						object = deepClone(object),
+						index = deepClone(index),
+						value = deepClone(value),
 						objectName = Name:Get(object),
 						indexName = Name:Get(index),
 						valueName = Name:Get(value),
@@ -170,8 +191,8 @@ return (function(SandboxActivity)
 					-- Add an activity entry
 					activity:AddEntry({
 						event = "setGlobal",
-						index = index,
-						value = value,
+						index = deepClone(index),
+						value = deepClone(value),
 						indexName = Name:Get(index),
 						valueName = Name:Get(value),
 					})
