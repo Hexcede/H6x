@@ -1488,7 +1488,10 @@ return (function(Sandbox)
 						--end
 						Logger:Log("POISON:__index", Logger.Verbosity.Poison, index, value)
 
-						self:ActivityEvent("Get", object, index, value)
+						-- If the object is not the global environment, log it
+						if not rawequal(object, self.BaseEnvironment.env) then
+							self:ActivityEvent("Get", object, index, value)
+						end
 
 						-- Poison value
 						return self:Poison(value, nil, 0)
@@ -1524,7 +1527,9 @@ return (function(Sandbox)
 						--end
 						Logger:Log("POISON:__newindex", Logger.Verbosity.Poison, real, index, value)
 
-						self:ActivityEvent("Set", object, index, value)
+						if not rawequal(object, self.BaseEnvironment.env) then
+							self:ActivityEvent("Set", object, index, value)
+						end
 
 						if real then
 							real[index] = value
