@@ -342,7 +342,10 @@ return (function(Sandbox)
 					local results = table.pack(object(...))
 					self:CheckTermination()
 
-					self:ActivityEvent("Call", object, table.pack(...), table.move(results, 1, results.n, 1, table.create(results.n)))
+					local args = table.pack(...)
+					local logResults = table.move(results, 1, results.n, 1, table.create(results.n))
+					logResults.n = results.n
+					self:ActivityEvent("Call", object, args, logResults)
 
 					for i, result in pairs(results) do
 						if i == "n" then
@@ -1610,8 +1613,8 @@ return (function(Sandbox)
 		local classTypeBlacklist = setmetatable({}, CONST.WEAK_METATABLES.Keys)
 		local rootBlacklist = setmetatable({}, CONST.WEAK_METATABLES.Keys)
 
-		local imported = setmetatable({}, CONST.WEAK_METATABLES.Keys)
-		local exported = setmetatable({}, CONST.WEAK_METATABLES.Keys)
+		local imported = {}--setmetatable({}, CONST.WEAK_METATABLES.Keys)
+		local exported = {}--setmetatable({}, CONST.WEAK_METATABLES.Keys)
 		local Environments = setmetatable({}, CONST.WEAK_METATABLES.Keys)
 
 		-- Basic metatable to automatically fill tables in for any nil value
@@ -1713,7 +1716,10 @@ return (function(Sandbox)
 						--end
 						Logger:Log("POISON:__index", Logger.Verbosity.Poison, index, value)
 
-						self:ActivityEvent("Get", object, index, value)
+						-- If the object is not the global environment, log it
+						if not rawequal(object, self.BaseEnvironment.env) then
+							self:ActivityEvent("Get", object, index, value)
+						end
 
 						-- Poison value
 						return self:Poison(value, nil, 0)
@@ -1749,7 +1755,9 @@ return (function(Sandbox)
 						--end
 						Logger:Log("POISON:__newindex", Logger.Verbosity.Poison, real, index, value)
 
-						self:ActivityEvent("Set", object, index, value)
+						if not rawequal(object, self.BaseEnvironment.env) then
+							self:ActivityEvent("Set", object, index, value)
+						end
 
 						if real then
 							real[index] = value

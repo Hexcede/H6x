@@ -120,12 +120,12 @@ return (function(Runner)
 
 			--	debugEnv(getfenv(0))
 			--end
-			Logger:Debug("Runner initialized.\n",
-				"\tEnvironment mismatch:", (getfenv(0) == getfenv(1) and getfenv(0) == getfenv(2)) and "NO." or "YES. (This is a BUG, potential environment leak)", "\n",
-				"\tSandbox environment:", getfenv(0), "\n",
-				"\tIs sandboxed:", sandbox and "YES." or "NO.", "\n",
-				"\tSandbox object:", sandbox
-			)
+			-- Logger:Debug("Runner initialized.\n",
+			-- 	"\tEnvironment mismatch:", (rawequal(getfenv(0), getfenv(1)) and rawequal(getfenv(0), getfenv(2))) and "NO." or "YES. (This is a BUG, potential environment leak)", "\n",
+			-- 	"\tSandbox environment:", tostring(getfenv(0)), "\n",
+			-- 	"\tIs sandboxed:", sandbox and "YES." or "NO.", "\n",
+			-- 	"\tSandbox object:", tostring(sandbox)
+			-- )
 		end
 
 		-- Apply the base environment to the callback function
