@@ -4,6 +4,13 @@ local Util = require(script.Parent.Parent:WaitForChild("Util"))
 
 local Sandbox = {}
 
+-- Localize to mitigate against conflicts caused by fenv manipulation
+local table = table
+local rawget = rawget
+local Instance = Instance
+local getfenv = getfenv
+local setmetatable = setmetatable
+
 local function callCFunctionImport(self, func, ...): typeof(table.pack(...))
 	-- Clean all arguments
 	local arguments = table.pack(...)
