@@ -10,25 +10,30 @@ return function(H6x)
 	local separateTree = Instance.new("Folder")
 
 	sandbox:AllowInstances()
-	sandbox:BlacklistTree(topLevel)
+	sandbox:AddRule({
+		Rule = "Block";
+		Mode = "IsDescendantOfInclusive";
+		Order = -2;
+		Target = topLevel;
+	})
 
 	assert(not sandbox:ExecuteString([[
 		result = ...
 		return result
-	]], topLevel), "BlacklistTree didn't blacklist top level")
+	]], topLevel), "Didn't block top level")
 	
 	assert(not sandbox:ExecuteString([[
 		result = ...
 		return result
-	]], descendant1), "BlacklistTree didn't blacklist first level descendant")
+	]], descendant1), "Didn't block first level descendant")
 
 	assert(not sandbox:ExecuteString([[
 		result = ...
 		return result
-	]], descendant2), "BlacklistTree didn't blacklist second level descendant")
+	]], descendant2), "Didn't block second level descendant")
 
 	assert(sandbox:ExecuteString([[
 		result = ...
 		return result
-	]], separateTree), "BlacklistTree blacklisted unrelated object")
+	]], separateTree), "Blocked unrelated object")
 end

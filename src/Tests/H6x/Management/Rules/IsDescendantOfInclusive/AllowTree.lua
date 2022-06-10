@@ -10,25 +10,30 @@ return function(H6x)
 	local separateTree = Instance.new("Folder")
 
 	sandbox:DenyInstances()
-	sandbox:ExceptTree(topLevel)
+	sandbox:AddRule({
+		Rule = "Allow";
+		Mode = "IsDescendantOfInclusive";
+		Order = -2;
+		Target = topLevel;
+	})
 
 	assert(sandbox:ExecuteString([[
 		result = ...
 		return result
-	]], topLevel), "ExceptTree didn't except top level")
+	]], topLevel), "Didn't allow top level")
 	
 	assert(sandbox:ExecuteString([[
 		result = ...
 		return result
-	]], descendant1), "ExceptTree didn't except first level descendant")
+	]], descendant1), "Didn't allow first level descendant")
 
 	assert(sandbox:ExecuteString([[
 		result = ...
 		return result
-	]], descendant2), "ExceptTree didn't except second level descendant")
+	]], descendant2), "Didn't allow second level descendant")
 
 	assert(not sandbox:ExecuteString([[
 		result = ...
 		return result
-	]], separateTree), "ExceptTree allowed unrelated object")
+	]], separateTree), "Allowed unrelated object")
 end

@@ -1,14 +1,28 @@
 return function(H6x)
 	local sandbox = H6x.Sandbox.new()
 	
-	sandbox:BlacklistReference(require)
 	sandbox:DenyInstances()
 
-	-- Example of how to except certain classes
-	sandbox:ExceptClassName("Model") -- Only Model classes, but, not things like Workspace which extend Model
-	sandbox:ExceptClass("Folder")
-	sandbox:ExceptClass("BasePart")
-	sandbox:ExceptClass("LuaSourceContainer")
+	sandbox:AddRule({ -- Only Model classes, but, not things like Workspace which extend Model
+		Rule = "Allow";
+		Mode = "ClassEquals";
+		Target = "Model";
+	})
+	sandbox:AddRule({
+		Rule = "Allow";
+		Mode = "IsA";
+		Target = "Folder";
+	})
+	sandbox:AddRule({
+		Rule = "Allow";
+		Mode = "IsA";
+		Target = "BasePart";
+	})
+	sandbox:AddRule({
+		Rule = "Allow";
+		Mode = "IsA";
+		Target = "LuaSourceContainer";
+	})
 
 	assert(not sandbox:ExecuteString([[
 		return game or workspace

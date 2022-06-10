@@ -5,15 +5,12 @@ return function(H6x)
 	
 	sandbox:AllowInstances()
 	
-	local dict = sandbox:Poison({
+	local dict = sandbox:Import({
 		[workspace] = game
 	})
-	
-	local array = sandbox:Poison({
+	local array = sandbox:Import({
 		game
 	})
-	
-	-- sandbox:RedirectorDefaults()
 
 	assert(sandbox:ExecuteString([[
 		return function(...)

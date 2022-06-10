@@ -3,8 +3,16 @@ return function(H6x)
 
 	sandbox:AllowInstances()
 	
-	sandbox:BlacklistClassName("TeleportService")
-	sandbox:BlacklistClass("BasePart")
+	sandbox:AddRule({
+		Rule = "Block";
+		Mode = "ClassEquals";
+		Target = "TeleportService";
+	})
+	sandbox:AddRule({
+		Rule = "Block";
+		Mode = "IsA";
+		Target = "BasePart";
+	})
 	
 	assert(sandbox:ExecuteString([[
 		return game

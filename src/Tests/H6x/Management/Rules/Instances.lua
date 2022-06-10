@@ -5,17 +5,17 @@ return function(H6x)
 	
 	assert(sandbox:ExecuteString([[
 		return game
-	]]), "Failed to access 'game' prior to test blacklist")
+	]]), "Failed to access 'game' prior to block")
 
 	assert(sandbox:ExecuteString([[
 		return game:GetService("RunService")
-	]]), "Failed to access 'RunService' prior to test blacklist")
+	]]), "Failed to access 'RunService' prior to block")
 
 	assert(sandbox:ExecuteString([[
 		return ...
-	]], game) == game, "Failed to access 'game' from input args prior to test blacklist")
+	]], game) == game, "Failed to access 'game' from input args prior to block")
 	
-	sandbox:BlacklistType("Instance")
+	sandbox:DenyInstances()
 
 	assert(not sandbox:ExecuteString([[
 		return ...

@@ -1,7 +1,8 @@
 return function(H6x)
 	local sandbox = H6x.Sandbox.new()
 
-	local success, reason, value = sandbox:ExecuteString([[
+	local success, reason, value = sandbox:ExecuteFunction(function()
+		shared.property = 234
 		shared.property = 123
 		
 		if shared.property ~= 123 then
@@ -21,7 +22,7 @@ return function(H6x)
 		end
 		
 		return true
-	]])
+	end)
 	
 	assert(success, not success and string.format("Sandbox detected using: %s Value: %s", reason, tostring(value)) or "")
 end
