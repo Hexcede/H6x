@@ -17,9 +17,9 @@ return function(H6x, fastMode)
 	local thread = sandbox.BaseEnvironment.env.thread
 	assert(thread, "Couldn't get the sandbox thread (Bug?)")
 	
-	if not fastMode then
-		task.wait(1)
-	end
+	-- if not fastMode then
+	-- 	task.wait(1)
+	-- end
 	
 	sandbox:Terminate()
 
@@ -31,10 +31,4 @@ return function(H6x, fastMode)
 			return game
 		]])
 	end), "New code ran after termination.")
-
-	sandbox:Unterminate()
-
-	assert(sandbox:ExecuteString([[
-		return game
-	]]), "Unterminate did not allow the sandbox to be reused.")
 end
