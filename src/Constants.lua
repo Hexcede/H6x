@@ -15,7 +15,8 @@ return {
 		["boolean"] = 2,
 		["number"] = 3,
 		["nil"] = 4,
-		["vector"] = 5
+		["vector"] = 5,
+		["thread"] = 6
 	},
 	MUTABLE_TYPES = {
 		["userdata"] = true,
