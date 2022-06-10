@@ -248,6 +248,8 @@ function Sandbox:AddDefaultSecurityRules(allowInstances: boolean?)
 		end
 	end
 	
+	block(getfenv()) -- Block local environment
+	block(getfenv(2)) -- Block caller environment
 	block(H6x) -- Block H6x
 	for index, value in pairs(H6x) do -- Block everything directly inside
 		block(index)
