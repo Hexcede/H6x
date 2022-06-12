@@ -247,9 +247,12 @@ function Sandbox:AddDefaultSecurityRules(allowInstances: boolean?)
 			})
 		end
 	end
+
+	local selfEnvironment = getfenv()
+	local callerEnvironment = getfenv(2)
 	
-	block(getfenv()) -- Block local environment
-	block(getfenv(2)) -- Block caller environment
+	block(selfEnvironment) -- Block local environment
+	block(callerEnvironment) -- Block caller environment
 	block(H6x) -- Block H6x
 	for index, value in pairs(H6x) do -- Block everything directly inside
 		block(index)
@@ -269,6 +272,149 @@ function Sandbox:AddDefaultSecurityRules(allowInstances: boolean?)
 	else
 		self:DenyInstances()
 	end
+
+	local MAX_LEVEL = 2^16
+	local function getfenvsafe(level: number)
+		return debug.info(level, "f") and getfenv(debug.info(level + 1, "f"))
+	end
+	local function shouldSkipEnvironment(env: any?): boolean
+		return rawequal(env, selfEnvironment) or rawequal(env, callerEnvironment)
+	end
+	local function seekEnvironment(level: number, findStackSize: boolean?): number
+		if level == 0 and not findStackSize then
+			return 0
+		end
+
+		local envList = table.create(level)
+		local currentLevel = 1
+		local env = getfenvsafe(currentLevel + 1)
+		local base = 0
+		while env do
+			if not shouldSkipEnvironment(env) then
+				base = base or currentLevel
+				table.insert(envList, currentLevel)
+				if level ~= 0 and #envList >= level then
+					break
+				end
+			end
+			currentLevel += 1
+			env = getfenvsafe(currentLevel + 1)
+		end
+		if level == 0 then
+			level = #envList
+		end
+		if envList[level] then
+			return envList[level]
+		end
+		return math.max(MAX_LEVEL, currentLevel + 1)
+	end
+	
+	local _getfenv = getfenv
+	local function getfenv(levelOrFunction)
+		if type(levelOrFunction) == "number" then
+			-- Otherwise, skip over disallowed environments
+			return _getfenv(seekEnvironment(levelOrFunction, true))
+		end
+		return _getfenv(levelOrFunction)
+	end
+	self:AddRule({
+		Rule = "Redirect";
+		Mode = "ByReference";
+		Order = -math.huge; -- Highest priority
+		Target = _getfenv;
+		Replacement = self:Import(getfenv);
+	})
+
+	local _setfenv = setfenv
+	local function setfenv(levelOrFunction, env)
+		if type(levelOrFunction) == "number" then
+			-- Otherwise, skip over disallowed environments
+			return _setfenv(seekEnvironment(levelOrFunction, true), env)
+		end
+		return _setfenv(levelOrFunction, env)
+	end
+	self:AddRule({
+		Rule = "Redirect";
+		Mode = "ByReference";
+		Order = -math.huge; -- Highest priority
+		Target = _setfenv;
+		Replacement = self:Import(setfenv);
+	})
+
+	local _error = error
+	local function error(message, level)
+		if type(level) == "number" then
+			level = seekEnvironment(level, true)
+		end
+		return _error(message, level)
+	end
+	self:AddRule({
+		Rule = "Redirect";
+		Mode = "ByReference";
+		Order = -math.huge; -- Highest priority
+		Target = _error;
+		Replacement = self:Import(error);
+	})
+
+	local debug_info = debug.info
+	local function info(...)
+		local nargs = select("#", ...)
+		if nargs >= 0 and nargs <= 1 then
+			return debug_info(...)
+		elseif nargs == 2 then
+			local levelOrFunction, options = ...
+			if type(levelOrFunction) == "number" then
+				levelOrFunction = seekEnvironment(levelOrFunction)
+			end
+			return debug_info(levelOrFunction, options)
+		end
+
+		local thread, level, options = ...
+		if not thread or rawequal(thread, coroutine.running()) then
+			if type(level) == "number" then
+				level = seekEnvironment(level)
+			end
+		end
+		return debug_info(thread, level, options, select(4, ...))
+	end
+	self:AddRule({
+		Rule = "Redirect";
+		Mode = "ByReference";
+		Order = -math.huge; -- Highest priority
+		Target = debug_info;
+		Replacement = self:Import(info);
+	})
+
+	local debug_traceback = debug.traceback
+	local function traceback(...)
+		local nargs = select("#", ...)
+		if nargs == 0 then
+			return debug_traceback(seekEnvironment(2, true))
+		elseif nargs == 1 then
+			return debug_traceback(..., seekEnvironment(2, true))
+		elseif nargs == 2 then
+			local message, level = ...
+			if type(level) == "number" then
+				level = seekEnvironment(level, true)
+			end
+			return debug_traceback(message, level)
+		end
+
+		local thread, message, level = ...
+		if rawequal(thread, coroutine.running()) then
+			if type(level) == "number" then
+				level = seekEnvironment(level, true)
+			end
+		end
+		return debug_traceback(thread, message, level, select(4, ...))
+	end
+	self:AddRule({
+		Rule = "Redirect";
+		Mode = "ByReference";
+		Order = -math.huge; -- Highest priority
+		Target = debug_traceback;
+		Replacement = self:Import(traceback)
+	})
 end
 
 --[=[
