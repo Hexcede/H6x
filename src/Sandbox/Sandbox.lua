@@ -71,51 +71,6 @@ local function callFunctionExported(self, func, ...): typeof(table.pack(...))
 	-- Return the results
 	return results
 end
--- local function callInternalFunction(self, func, ...): typeof(table.pack(...))
--- 	-- Export all arguments
--- 	local arguments = table.pack(...)
--- 	for i=1, arguments.n do
--- 		arguments[i] = self:Import(arguments[i])
--- 	end
--- 	-- Call the function
--- 	local results = table.pack(Reflector.__call(func, table.unpack(arguments, 1, arguments.n)))
--- 	-- Import all results
--- 	for i=1, results.n do
--- 		results[i] = self:GetClean(results[i])
--- 	end
--- 	-- Return the results
--- 	return results
--- end
--- local function callFunctionImported(self, func, ...): typeof(table.pack(...))
--- 	-- Export all arguments
--- 	local arguments = table.pack(...)
--- 	for i=1, arguments.n do
--- 		arguments[i] = self:Export(arguments[i])
--- 	end
--- 	-- Call the function
--- 	local results = table.pack(Reflector.__call(func, table.unpack(arguments, 1, arguments.n)))
--- 	-- Import all results
--- 	for i=1, results.n do
--- 		results[i] = self:Import(results[i])
--- 	end
--- 	-- Return the results
--- 	return results
--- end
--- local function callFunctionExported(self, func, ...): typeof(table.pack(...))
--- 	-- Import all arguments
--- 	local arguments = table.pack(...)
--- 	for i=1, arguments.n do
--- 		arguments[i] = self:Import(arguments[i])
--- 	end
--- 	-- Call the function
--- 	local results = table.pack(Reflector.__call(func, table.unpack(arguments, 1, arguments.n)))
--- 	-- Export all results
--- 	for i=1, results.n do
--- 		results[i] = self:Export(results[i])
--- 	end
--- 	-- Return the results
--- 	return results
--- end
 
 --[=[
 	Creates a new unconfigured sandbox.
@@ -137,9 +92,9 @@ function Sandbox.new(options)
 		},
 
 		Poison = {
-			ToImport = {};--setmetatable({}, {__mode = "k"});
-			ToExport = {};--setmetatable({}, {__mode = "k"});
-			ToClean = {};--setmetatable({}, {__mode = "v"});
+			ToImport = {};
+			ToExport = {};
+			ToClean = {};
 		},
 		ImportMetatable = {
 			__call = function(object, ...)
