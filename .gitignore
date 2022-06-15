@@ -1,6 +1,10 @@
 # Project files
 /*.rbxm
 /*.rbxmx
+/*.rbxl
+/*.rbxlx
+/*.rbxl.lock
+/*.rbxlx.lock
 
 # Selene
 /roblox.toml

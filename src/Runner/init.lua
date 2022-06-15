@@ -97,9 +97,9 @@ return (function(Runner)
 			--	warn(LOG_PREFIX, "An unsafe runner was created! Consider using a sandbox for a bit of safety. Disable this message by editing the top of this script.")
 			--end
 			Logger:Notice("An unsafe runner was initialized. Use a sandbox to silence this.")
-		else
+		-- else
 			-- Redirect the script variable in the sandbox
-			sandbox:__redirectScript(runnerScript)
+			-- sandbox:__redirectScript(runnerScript)
 		end
 
 		-- Create a callback for the initial runner code (This sets up the runner for running sandboxed code)

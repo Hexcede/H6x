@@ -1,10 +1,10 @@
 return function(H6x)
 	local sandbox = H6x.Sandbox.new()
 
-	assert(sandbox:ExecuteString([[
+	assert(sandbox:ExecuteFunction(function()
 		return true
-	]]), "Failed to return (true)")
-	assert(sandbox:ExecuteString([[
+	end), "Failed to return (true)")
+	assert(sandbox:ExecuteFunction(function()
 		return false
-	]]) == false, "Failed to return (false)")
+	end) == false, "Failed to return (false)")
 end

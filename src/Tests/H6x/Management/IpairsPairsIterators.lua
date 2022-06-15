@@ -5,31 +5,28 @@ return function(H6x)
 	
 	sandbox:AllowInstances()
 	
-	local dict = sandbox:Poison({
+	local dict = sandbox:Import({
 		[workspace] = game
 	})
-	
-	local array = sandbox:Poison({
+	local array = sandbox:Import({
 		game
 	})
-	
-	-- sandbox:RedirectorDefaults()
 
-	assert(sandbox:ExecuteString([[
+	assert(sandbox:ExecuteFunction(function()
 		return function(...)
 			for index, value in pairs(...) do
 				return index == workspace and value == game
 			end
 			return false
 		end
-	]])(dict), "pairs did not loop over table.")
+	end)(dict), "pairs did not loop over table.")
 
-	assert(sandbox:ExecuteString([[
+	assert(sandbox:ExecuteFunction(function()
 		return function(...)
 			for index, value in ipairs(...) do
 				return index == 1 and value == game
 			end
 			return false
 		end
-	]])(array), "ipairs did not loop over array.")
+	end)(array), "ipairs did not loop over array.")
 end

@@ -4,7 +4,7 @@ return function(H6x)
 	sandbox:AllowInstances()
 	sandbox:SetRequireMode("disabled")
 
-	assert(not (sandbox:ExecuteString([[
+	assert(not (sandbox:ExecuteFunction(function(...)
 		return pcall(require, ...)
-	]], script)), "Require succeeded when requires are disabled.")
+	end, script:Clone())), "Require succeeded when requires are disabled.")
 end

@@ -5,7 +5,9 @@
 
 		"ServerScriptService": {
 			"$className": "ServerScriptService",
-
+			"$properties": {
+				"LoadStringEnabled": true
+			},
 			"H6x": {
 				"$path": "./src"
 			}

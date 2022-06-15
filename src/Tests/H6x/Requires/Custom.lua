@@ -10,13 +10,13 @@ return function(H6x)
 		return false 
 	end)
 
-	assert(sandbox:ExecuteString([[
+	assert(sandbox:ExecuteFunction(function()
 		return require("ABC") == 123
-	]]), "Custom require mode is not working (1)")
-	assert(sandbox:ExecuteString([[
+	end), "Custom require mode is not working (1)")
+	assert(sandbox:ExecuteFunction(function()
 		return require("DEF") == 456
-	]]), "Custom require mode is not working (2)")
-	assert(sandbox:ExecuteString([[
+	end), "Custom require mode is not working (2)")
+	assert(sandbox:ExecuteFunction(function()
 		return require("GHI") == false
-	]]), "Custom require mode is not working (3)")
+	end), "Custom require mode is not working (3)")
 end

@@ -1,8 +1,13 @@
 return function(H6x)
 	local sandbox = H6x.Sandbox.Vanilla.new()
 
-	sandbox:Redirect(print, function()end)
-	sandbox:ExecuteString([[
+	sandbox:AddRule({
+		Rule = "Redirect";
+		Mode = "ByReference";
+		Target = print;
+		Replacement = function()end;
+	})
+	sandbox:ExecuteFunction(function()
 		
-	]])
+	end)
 end

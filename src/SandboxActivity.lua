@@ -228,12 +228,7 @@ return (function(SandboxActivity)
 					local activity = self.Activity
 					local sandbox = activity.Sandbox
 					if sandbox then
-						local poisonMap = sandbox.poisonMap
-
-						local real = poisonMap.Real
-
-						local realObject = real[object]
-
+						local realObject = sandbox:GetClean(object)
 						if realObject then
 							object = realObject
 						end
@@ -246,12 +241,7 @@ return (function(SandboxActivity)
 					local activity = self.Activity
 					local sandbox = activity.Sandbox
 					if sandbox then
-						local poisonMap = sandbox.poisonMap
-
-						local real = poisonMap.Real
-
-						local realObject = real[object]
-
+						local realObject = sandbox:GetClean(object)
 						if realObject then
 							object = realObject
 						end
@@ -319,13 +309,12 @@ return (function(SandboxActivity)
 			local stackEntries = {}
 			local report = {}
 
-			local poisonMap = self.Sandbox.poisonMap
-
+			local sandbox = self.Sandbox
 			local function findSafe(tab, value)
-				local realValue = poisonMap.Real[value] or value
+				local realValue = sandbox:GetClean(value)
 				for index, otherValue in ipairs(tab) do
-					local realOtherValue = poisonMap.Real[otherValue] or otherValue
-					if rawequal(realOtherValue, realValue) then
+					local realOtherValue = sandbox:GetClean(otherValue)
+					if rawequal(realValue, realOtherValue) then
 						return index
 					end
 				end
@@ -482,8 +471,8 @@ return (function(SandboxActivity)
 							local indexName = methodEntry.indexName
 							indexName = getName(methodEntry.index, indexName)
 
-							local realArg1 = poisonMap.Real[args[1]] or args[1]
-							local realObj = poisonMap.Real[methodEntry.object] or methodEntry.object
+							local realArg1 = sandbox:GetClean(args[1])
+							local realObj = sandbox:GetClean(methodEntry.object)
 
 							if realArg1 == realObj then
 								-- Method call

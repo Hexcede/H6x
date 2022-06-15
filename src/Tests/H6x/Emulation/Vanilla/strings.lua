@@ -1,8 +1,14 @@
 return function(H6x)
 	local sandbox = H6x.Sandbox.Vanilla.new()
 
-	sandbox:Redirect(print, function()end)
-	sandbox:ExecuteString([[
+	-- Eat print output
+	sandbox:AddRule({
+		Rule = "Redirect";
+		Mode = "ByReference";
+		Target = print;
+		Replacement = function()end;
+	})
+	sandbox:ExecuteFunction(function()
 		print('testing strings and string library')
 
 		assert('alo' < 'alo1')
@@ -107,7 +113,7 @@ return function(H6x)
 
 		x = '"ílo"\n\\'
 		assert(string.format('%q%s', x, x) == '"\\"ílo\\"\\\n\\\\""ílo"\n\\')
-		assert(string.format('%q', "\0") == ]] .. "[[\"\\000\"]]" .. [[)
+		assert(string.format('%q', "\0") == [["\000"]])
 		-- assert(string.format("\0%c\0%c%x\0", string.byte("á"), string.byte("b"), 140) ==
 		-- 			"\0á\0b8c\0")
 		assert(string.format('') == "")
@@ -127,8 +133,11 @@ return function(H6x)
 
 		-- longest number that can be formated
 		assert(string.len(string.format('%99.99f', -1e308)) >= 100)
-
-		assert(loadstring("return 1\n--comentário sem EOL no final")() == 1)
+		
+		-- Ensure loadstring is enabled before running loadstring test (H6x patch)
+		if pcall(loadstring, "") then
+			assert(loadstring("return 1\n--comentário sem EOL no final")() == 1)
+		end
 
 
 		assert(table.concat{} == "")
@@ -150,5 +159,5 @@ return function(H6x)
 		assert(table.concat(a, ",", 4) == "")
 
 		print('OK')
-	]])
+	end)
 end
