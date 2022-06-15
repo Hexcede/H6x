@@ -131,6 +131,27 @@ function Sandbox.new(options)
 
 				self:ActivityEvent("Set", real, index, value)
 			end,
+			__iter = function(object)
+				self:CheckTermination()
+				self:TrackThread()
+
+				local real = self:GetClean(object)
+
+				-- TODO: Instead of index, value explicitly, use a vararg if it becomes possible
+				--        OR if it becomes possible, correctly wrap the metamethod
+				return self:Import(coroutine.wrap(function(object)
+					local real = self:GetClean(object)
+					-- TODO -- self:ActivityEvent("Iterating", real)
+					for index, value in real do
+						index = self:Import(index)
+						if not rawequal(index, nil) then
+							value = self:Import(value)
+							coroutine.yield(index, value)
+						end
+					end
+					-- TODO -- self:ActivityEvent("DoneIterating", real)
+				end)), self:Import(real)
+			end
 			-- __metatable = "The metatable is locked."
 		},
 		ExportMetatable = {
@@ -166,6 +187,27 @@ function Sandbox.new(options)
 
 				self:ActivityEvent("Set", real, index, value)
 			end,
+			__iter = function(object)
+				self:CheckTermination()
+				self:TrackThread()
+
+				local real = self:GetClean(object)
+
+				-- TODO: Instead of index, value explicitly, use a vararg if it becomes possible
+				--        OR if it becomes possible, correctly wrap the metamethod
+				return coroutine.wrap(function(object)
+					local real = self:GetClean(object)
+					-- TODO -- self:ActivityEvent("Iterating", real)
+					for index, value in real do
+						index = self:GetClean(index)
+						if not rawequal(index, nil) then
+							value = self:GetClean(value)
+							coroutine.yield(index, value)
+						end
+					end
+					-- TODO -- self:ActivityEvent("DoneIterating", real)
+				end), real
+			end
 			-- __metatable = "The metatable is locked."
 		}
 	}
