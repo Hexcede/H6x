@@ -71,10 +71,6 @@ local function callFunctionExported(self, func, ...): typeof(table.pack(...))
 	-- Return the results
 	return results
 end
--- A helper function which takes in arguments and returns them back so the above functions can be used
-local function varg(...)
-	return ...
-end
 
 --[=[
 	Creates a new unconfigured sandbox.
@@ -141,17 +137,13 @@ function Sandbox.new(options)
 
 				local real = self:GetClean(object)
 
-				-- TODO: Instead of index, value explicitly, use a vararg if it becomes possible
-				--        OR if it becomes possible, correctly wrap the metamethod
 				return self:Import(coroutine.wrap(function(object)
 					local real = self:GetClean(object)
 					-- TODO -- self:ActivityEvent("Iterating", real)
-					for index, value, a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z, A, B, C, D, OVERFLOW in real do
-						assert(OVERFLOW == nil, "# of __iter results too long")
+					for index, value, extra in real do
 						index = self:Import(index)
 						if not rawequal(index, nil) then
-							local results = callCFunctionImport(self, varg, value, a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z, A, B, C, D)
-							coroutine.yield(index, table.unpack(results, 1, results.n))
+							coroutine.yield(index, self:Import(value), self:Import(extra))
 						end
 					end
 					-- TODO -- self:ActivityEvent("DoneIterating", real)
@@ -198,17 +190,13 @@ function Sandbox.new(options)
 
 				local real = self:GetClean(object)
 
-				-- TODO: Instead of index, value explicitly, use a vararg if it becomes possible
-				--        OR if it becomes possible, correctly wrap the metamethod
 				return coroutine.wrap(function(object)
 					local real = self:GetClean(object)
 					-- TODO -- self:ActivityEvent("Iterating", real)
-					for index, value, a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z, A, B, C, D, OVERFLOW in real do
-						assert(OVERFLOW == nil, "# of __iter results too long")
+					for index, value, extra in real do
 						index = self:GetClean(index)
 						if not rawequal(index, nil) then
-							local results = callCFunctionExport(self, varg, value, a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z, A, B, C, D)
-							coroutine.yield(index, table.unpack(results, 1, results.n))
+							coroutine.yield(index, self:GetClean(value), self:GetClean(extra))
 						end
 					end
 					-- TODO -- self:ActivityEvent("DoneIterating", real)
