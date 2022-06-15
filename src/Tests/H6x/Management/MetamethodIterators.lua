@@ -19,9 +19,9 @@ return function(H6x)
 	sandbox:ExecuteFunction(function(iterable)
 		for x, y in iterable do
 			if x == 1 then
-				assert(y == 2, "The value at index 1 was not 2.")
+				assert(y == 2, string.format("The value at index 1 was not 2, it was %s.", tostring(y)))
 			elseif x == 2 then
-				assert(y == "abc", "The value at index 2 was not \"abc\".")
+				assert(y == "abc", string.format("The value at index 2 was not \"abc\", it was %s.", tostring(y)))
 			end
 			iterCount += 1
 		end
@@ -43,4 +43,16 @@ return function(H6x)
 		end
 	end, iterable)
 	assert(iterCount == 1, string.format("Iterated over too many or too few elements. Expected one iteration, but %d iterations occurred.", iterCount))
+
+	-- Make sure multiple values can be returned from an iterator
+	meta.__iter = function(self)
+		return string.gmatch("abc 123 EFG", "(%w+) (%d+) (%w+)")
+	end
+	sandbox:ExecuteFunction(function(iterable)
+		for a, b, c in iterable do
+			assert(a == "abc", "The first value was not \"abc\".")
+			assert(b == "123", "The second value was not \"123\".")
+			assert(c == "EFG", "The third value was not \"EFG\".")
+		end
+	end, iterable)
 end
