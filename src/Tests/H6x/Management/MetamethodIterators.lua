@@ -1,4 +1,14 @@
 return function(H6x)
+	do
+		-- Try to iterate on a table. If this fails, the feature is disabled.
+		-- TODO: Remove this
+		if not pcall(function()
+			for _ in {} do end
+		end) then
+			return
+		end
+	end
+
 	local sandbox = H6x.Sandbox.new()
 
 	local testTable = {
