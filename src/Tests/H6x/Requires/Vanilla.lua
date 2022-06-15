@@ -6,7 +6,7 @@ return function(H6x)
 	sandbox:AddModule("ABC", 123)
 	sandbox:AddModule("DEF", 456)
 
-	assert((sandbox:ExecuteString([[
+	assert((sandbox:ExecuteFunction(function()
 		return require "ABC" == 123 and require "DEF" == 456
-	]], script)), "Require failed when requires are vanilla-emulated.")
+	end, script)), "Require failed when requires are vanilla-emulated.")
 end

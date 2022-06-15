@@ -1,13 +1,14 @@
 return function(H6x)
 	local sandbox = H6x.Sandbox.Vanilla.new()
 
+	-- Eat print output
 	sandbox:AddRule({
 		Rule = "Redirect";
 		Mode = "ByReference";
 		Target = print;
 		Replacement = function()end;
 	})
-	sandbox:ExecuteString([[
+	sandbox:ExecuteFunction(function()
 		do --[
 
 		print "testing require"
@@ -348,5 +349,5 @@ return function(H6x)
 		print('OK')
 		
 		return res
-	]])
+	end)
 end

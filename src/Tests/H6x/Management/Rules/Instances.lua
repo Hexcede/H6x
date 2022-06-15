@@ -3,33 +3,33 @@ return function(H6x)
 
 	sandbox:AllowInstances()
 	
-	assert(sandbox:ExecuteString([[
+	assert(sandbox:ExecuteFunction(function()
 		return game
-	]]), "Failed to access 'game' prior to block")
+	end), "Failed to access 'game' prior to block")
 
-	assert(sandbox:ExecuteString([[
+	assert(sandbox:ExecuteFunction(function()
 		return game:GetService("RunService")
-	]]), "Failed to access 'RunService' prior to block")
+	end), "Failed to access 'RunService' prior to block")
 
-	assert(sandbox:ExecuteString([[
+	assert(sandbox:ExecuteFunction(function(...)
 		return ...
-	]], game) == game, "Failed to access 'game' from input args prior to block")
+	end, game) == game, "Failed to access 'game' from input args prior to block")
 	
 	sandbox:DenyInstances()
 
-	assert(not sandbox:ExecuteString([[
+	assert(not sandbox:ExecuteFunction(function(...)
 		return ...
-	]], game), "Accessed 'game' from input args")
+	end, game), "Accessed 'game' from input args")
 
-	assert(not sandbox:ExecuteString([[
+	assert(not sandbox:ExecuteFunction(function()
 		return game
-	]]), "Accessed 'game'")
+	end), "Accessed 'game'")
 	
-	assert(not sandbox:ExecuteString([[
+	assert(not sandbox:ExecuteFunction(function()
 		return workspace
-	]]), "Accessed 'workspace'")
+	end), "Accessed 'workspace'")
 	
-	assert(not sandbox:ExecuteString([[
+	assert(not sandbox:ExecuteFunction(function()
 		return Instance.new("Folder")
-	]]), "Accessed 'Instance.new()'")
+	end), "Accessed 'Instance.new()'")
 end

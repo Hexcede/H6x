@@ -4,7 +4,7 @@ return function(H6x)
 	sandbox:AllowInstances()
 	sandbox:SetRequireMode("roblox")
 
-	assert((sandbox:ExecuteString([[
+	assert((sandbox:ExecuteFunction(function(...)
 		return pcall(require, ...)
-	]], script:Clone())), "Require failed when requires are Roblox-like.")
+	end, script:Clone())), "Require failed when requires are Roblox-like.")
 end

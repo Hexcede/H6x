@@ -1,6 +1,6 @@
+-- NOTE: This test does not validate that logs are correct, it only validates that logs are created without errors.
 return function(H6x)
 	local sandbox = H6x.Sandbox.new()
-
 	sandbox:ExecuteFunction(function()
 		abc = function(a, b)
 			return b, a

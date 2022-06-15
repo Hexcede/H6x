@@ -9,12 +9,12 @@ return function(H6x)
 		Order = -1;
 		Target = game;
 	})
-	assert(sandbox:ExecuteString([[
+	assert(sandbox:ExecuteFunction(function()
 		return game
-	]]), "Didn't allow 'game' when it was supposed to be")
-	assert(not sandbox:ExecuteString([[
+	end), "Didn't allow 'game' when it was supposed to be")
+	assert(not sandbox:ExecuteFunction(function()
 		return workspace
-	]]), "Allowed 'workspace' when it wasn't supposed to be")
+	end), "Allowed 'workspace' when it wasn't supposed to be")
 	sandbox:RemoveRule(allowRule)
 
 	allowRule = sandbox:AddRule({
@@ -23,12 +23,12 @@ return function(H6x)
 		Order = -1;
 		Target = workspace;
 	})
-	assert(sandbox:ExecuteString([[
+	assert(sandbox:ExecuteFunction(function()
 		return workspace
-	]]), "Didn't allow 'workspace' when it was supposed to be")
-	assert(not sandbox:ExecuteString([[
+	end), "Didn't allow 'workspace' when it was supposed to be")
+	assert(not sandbox:ExecuteFunction(function()
 		return game
-	]]), "Allowed 'game' when it wasn't supposed to be")
+	end), "Allowed 'game' when it wasn't supposed to be")
 	sandbox:RemoveRule(allowRule)
 	
 	local folder = Instance.new("Folder")
@@ -38,8 +38,8 @@ return function(H6x)
 		Order = -1;
 		Target = folder;
 	})
-	assert(sandbox:ExecuteString([[
+	assert(sandbox:ExecuteFunction(function(...)
 		return ...
-	]], folder), "Didn't allow 'Folder' when it was supposed to be")
+	end, folder), "Didn't allow 'Folder' when it was supposed to be")
 	sandbox:RemoveRule(allowRule)
 end

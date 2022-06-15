@@ -7,10 +7,10 @@ return function(H6x)
 		Mode = "ByReference";
 		Target = game;
 	})
-	assert(not sandbox:ExecuteString([[
+	assert(not sandbox:ExecuteFunction(function()
 		local success, game = pcall(function()
 			return game
 		end)
 		return success and game
-	]]), "Did not block game")
+	end), "Did not block game")
 end

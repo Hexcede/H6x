@@ -12,29 +12,29 @@ return function(H6x)
 	fakeScript.Name = "FakeScript"
 	sandbox:SetScript(fakeScript)
 	
-	assert(not sandbox:ExecuteString([[
+	assert(not sandbox:ExecuteFunction(function()
 		return require
-	]]), "Accessed require")
+	end), "Accessed require")
 
-	assert(sandbox:ExecuteString([[
+	assert(sandbox:ExecuteFunction(function()
 		return script.Name == "FakeScript"
-	]]), "Script variable wasn't sandboxed")
+	end), "Script variable wasn't sandboxed")
 	
 	local success, access = pcall(function()
-		return sandbox:ExecuteString([[
+		return sandbox:ExecuteFunction(function(...)
 			local success, H6x = pcall(function(...)
 				globalH6x = ...
 				return globalH6x
 			end, ...)
 			return success and H6x
-		]], H6x) and true or false
+		end, H6x) and true or false
 	end)
 	assert(not success or not access, "Accessed H6x module (Security)")
 
 	success, access = pcall(function()
-		return sandbox:ExecuteString([[
+		return sandbox:ExecuteFunction(function(...)
 			return ...
-		]], H6x) and true or false
+		end, H6x) and true or false
 	end)
 	assert(not success or not access, "Accessed H6x module directly (Security)")
 
@@ -44,13 +44,13 @@ return function(H6x)
 	sandbox = H6x.Sandbox.new()
 
 	success, access = pcall(function()
-		return sandbox:ExecuteString([[
+		return sandbox:ExecuteFunction(function(...)
 			local success, sandbox = pcall(function(...)
 				globalSandbox = ...
 				return globalSandbox
 			end, ...)
 			return success and sandbox
-		]], sandbox) and true or false
+		end, sandbox) and true or false
 	end)
 	assert(not success or not access, "Accessed Sandbox inside Sandbox (Security)")
 end

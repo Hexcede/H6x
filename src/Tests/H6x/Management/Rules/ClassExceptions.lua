@@ -24,27 +24,27 @@ return function(H6x)
 		Target = "LuaSourceContainer";
 	})
 
-	assert(not sandbox:ExecuteString([[
+	assert(not sandbox:ExecuteFunction(function()
 		return game or workspace
-	]]), "Failed to blacklist 'game or workspace'")
+	end), "Failed to blacklist 'game or workspace'")
 
-	assert(not sandbox:ExecuteString([[
+	assert(not sandbox:ExecuteFunction(function()
 		return Instance.new("StringValue")
-	]]), "Failed to blacklist 'StringValue'")
+	end), "Failed to blacklist 'StringValue'")
 
-	assert(sandbox:ExecuteString([[
+	assert(sandbox:ExecuteFunction(function()
 		return Instance.new("Model")
-	]]), "Failed to create 'Model'")
+	end), "Failed to create 'Model'")
 
-	assert(sandbox:ExecuteString([[
+	assert(sandbox:ExecuteFunction(function()
 		return Instance.new("Folder")
-	]]), "Failed to create 'Folder'")
+	end), "Failed to create 'Folder'")
 
-	assert(sandbox:ExecuteString([[
+	assert(sandbox:ExecuteFunction(function()
 		return Instance.new("Script")
-	]]), "Failed to create 'Script'")
+	end), "Failed to create 'Script'")
 
-	assert(sandbox:ExecuteString([[
+	assert(sandbox:ExecuteFunction(function()
 		return Instance.new("Part")
-	]]), "Failed to create 'Part'")
+	end), "Failed to create 'Part'")
 end

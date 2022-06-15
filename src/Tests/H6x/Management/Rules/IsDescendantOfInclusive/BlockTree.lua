@@ -17,23 +17,23 @@ return function(H6x)
 		Target = topLevel;
 	})
 
-	assert(not sandbox:ExecuteString([[
+	assert(not sandbox:ExecuteFunction(function(...)
 		result = ...
 		return result
-	]], topLevel), "Didn't block top level")
+	end, topLevel), "Didn't block top level")
 	
-	assert(not sandbox:ExecuteString([[
+	assert(not sandbox:ExecuteFunction(function(...)
 		result = ...
 		return result
-	]], descendant1), "Didn't block first level descendant")
+	end, descendant1), "Didn't block first level descendant")
 
-	assert(not sandbox:ExecuteString([[
+	assert(not sandbox:ExecuteFunction(function(...)
 		result = ...
 		return result
-	]], descendant2), "Didn't block second level descendant")
+	end, descendant2), "Didn't block second level descendant")
 
-	assert(sandbox:ExecuteString([[
+	assert(sandbox:ExecuteFunction(function(...)
 		result = ...
 		return result
-	]], separateTree), "Blocked unrelated object")
+	end, separateTree), "Blocked unrelated object")
 end

@@ -7,7 +7,7 @@ return function(H6x)
 		Target = print;
 		Replacement = function()end;
 	})
-	sandbox:ExecuteString([[
+	sandbox:ExecuteFunction(function()
 		
-	]])
+	end)
 end

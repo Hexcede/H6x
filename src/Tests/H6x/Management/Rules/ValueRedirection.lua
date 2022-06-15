@@ -11,15 +11,15 @@ return function(H6x)
 	
 	-- Note: Since values can't be accessed unless they get exposed to the sandbox somehow the value is put in the globals so it'll get filtered when its read back
 	
-	assert(sandbox:ExecuteString([[
+	assert(sandbox:ExecuteFunction(function()
 		globalThing = Instance.new("Folder")
 		return globalThing
-	]]) == rule.Replacement, "Didn't redirect value directly")
+	end) == rule.Replacement, "Didn't redirect value directly")
 
-	assert(sandbox:ExecuteString([[
+	assert(sandbox:ExecuteFunction(function()
 		globalThing = Instance.new("Model")
 		return globalThing
-	]]):IsA("Model"), "Redirected a value that shouldn't have been redirected")
+	end):IsA("Model"), "Redirected a value that shouldn't have been redirected")
 	
 	sandbox:RemoveRule(rule)
 	sandbox:AddRule({
@@ -32,17 +32,17 @@ return function(H6x)
 		end
 	})
 
-	assert(sandbox:ExecuteString([[
+	assert(sandbox:ExecuteFunction(function()
 		globalThing = Instance.new("Folder")
 		return globalThing
-	]]) == "Injected", "Didn't inject at value")
+	end) == "Injected", "Didn't inject at value")
 
-	assert(sandbox:ExecuteString([[
+	assert(sandbox:ExecuteFunction(function()
 		globalThing = Instance.new("Model")
 		return globalThing
-	]]) ~= "Injected", "Injected at a value that shouldn't have been")
+	end) ~= "Injected", "Injected at a value that shouldn't have been")
 
-	assert(sandbox:ExecuteString([[
+	assert(sandbox:ExecuteFunction(function()
 		return Instance.new("Folder")
-	]]) == "Injected", "Didn't inject at value when returning directly")
+	end) == "Injected", "Didn't inject at value when returning directly")
 end

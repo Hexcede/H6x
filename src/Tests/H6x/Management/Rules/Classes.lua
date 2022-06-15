@@ -14,15 +14,15 @@ return function(H6x)
 		Target = "BasePart";
 	})
 	
-	assert(sandbox:ExecuteString([[
+	assert(sandbox:ExecuteFunction(function()
 		return game
-	]]), "Class blacklist blacklisted incorrect class")
+	end), "Class blacklist blacklisted incorrect class")
 
-	assert(not sandbox:ExecuteString([[
+	assert(not sandbox:ExecuteFunction(function()
 		return game:GetService("TeleportService")
-	]]), "Specific ClassName blacklist failure")
+	end), "Specific ClassName blacklist failure")
 	
-	assert(not sandbox:ExecuteString([[
+	assert(not sandbox:ExecuteFunction(function()
 		return Instance.new("Part")
-	]]), "Class type blacklist failure")
+	end), "Class type blacklist failure")
 end

@@ -17,23 +17,23 @@ return function(H6x)
 		Target = topLevel;
 	})
 
-	assert(sandbox:ExecuteString([[
+	assert(sandbox:ExecuteFunction(function(...)
 		result = ...
 		return result
-	]], topLevel), "Didn't allow top level")
+	end, topLevel), "Didn't allow top level")
 	
-	assert(sandbox:ExecuteString([[
+	assert(sandbox:ExecuteFunction(function(...)
 		result = ...
 		return result
-	]], descendant1), "Didn't allow first level descendant")
+	end, descendant1), "Didn't allow first level descendant")
 
-	assert(sandbox:ExecuteString([[
+	assert(sandbox:ExecuteFunction(function(...)
 		result = ...
 		return result
-	]], descendant2), "Didn't allow second level descendant")
+	end, descendant2), "Didn't allow second level descendant")
 
-	assert(not sandbox:ExecuteString([[
+	assert(not sandbox:ExecuteFunction(function(...)
 		result = ...
 		return result
-	]], separateTree), "Allowed unrelated object")
+	end, separateTree), "Allowed unrelated object")
 end

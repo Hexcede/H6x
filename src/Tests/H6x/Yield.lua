@@ -1,11 +1,10 @@
 return function(H6x)
 	local sandbox = H6x.Sandbox.new()
 	
-	local thread = coroutine.wrap(function()
-		sandbox:ExecuteString([[
-			coroutine.yield(true)
-		]])
-		
-		error("Executor passed after permanent yield", 2)
-	end)()
+	task.spawn(function()
+		sandbox:ExecuteFunction(function()
+			coroutine.yield()
+		end)
+		error("Permanent yield was skipped.", 2)
+	end)
 end
