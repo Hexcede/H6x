@@ -13,7 +13,7 @@ return (function(Runner)
 				callback = sandbox:LoadFunction(callback)
 
 				if sandbox.Terminated then
-					return sandbox:CheckTermination()
+					return
 				end
 			else
 				--if WARN_UNSANDBOXED_RUNNER then

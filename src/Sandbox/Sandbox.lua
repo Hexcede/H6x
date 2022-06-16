@@ -98,7 +98,7 @@ function Sandbox.new(options)
 		},
 		ImportMetatable = {
 			__call = function(object, ...)
-				self:CheckTermination()
+				self:ProcessTermination()
 				self:TrackThread()
 				local real = self:GetClean(object)
 
@@ -111,7 +111,7 @@ function Sandbox.new(options)
 				return table.unpack(results, 1, results.n)
 			end,
 			__index = function(object, index)
-				self:CheckTermination()
+				self:ProcessTermination()
 				self:TrackThread()
 
 				local real = self:GetClean(object)
@@ -121,7 +121,7 @@ function Sandbox.new(options)
 				return self:Import(value)
 			end,
 			__newindex = function(object, index, value)
-				self:CheckTermination()
+				self:ProcessTermination()
 				self:TrackThread()
 				index = self:GetClean(index)
 				value = self:GetClean(value)
@@ -132,7 +132,7 @@ function Sandbox.new(options)
 				self:ActivityEvent("Set", real, index, value)
 			end,
 			__iter = function(object)
-				self:CheckTermination()
+				self:ProcessTermination()
 				self:TrackThread()
 
 				local real = self:GetClean(object)
@@ -153,7 +153,7 @@ function Sandbox.new(options)
 		},
 		ExportMetatable = {
 			__call = function(object, ...)
-				self:CheckTermination()
+				self:ProcessTermination()
 				local real = self:GetClean(object)
 
 				local results = if Util.isCFunction(real) then
@@ -165,7 +165,7 @@ function Sandbox.new(options)
 				return table.unpack(results, 1, results.n)
 			end,
 			__index = function(object, index)
-				self:CheckTermination()
+				self:ProcessTermination()
 				index = self:GetClean(index)
 
 				local real = self:GetClean(object)
@@ -175,7 +175,7 @@ function Sandbox.new(options)
 				return self:Export(value)
 			end,
 			__newindex = function(object, index, value)
-				self:CheckTermination()
+				self:ProcessTermination()
 				index = self:GetClean(index)
 				value = self:GetClean(value)
 
@@ -185,7 +185,7 @@ function Sandbox.new(options)
 				self:ActivityEvent("Set", real, index, value)
 			end,
 			__iter = function(object)
-				self:CheckTermination()
+				self:ProcessTermination()
 				self:TrackThread()
 
 				local real = self:GetClean(object)

@@ -553,6 +553,16 @@ function Sandbox:Terminate(terminateCaller: boolean?)
 	for _, thread in ipairs(threads) do
 		killThread(thread)
 	end
+--[=[
+	Do not call this function.
+	This function is called automatically when code inside the sandbox triggers any managed code.
+	It is used to determine if the sandbox needs to terminate/has terminated, and if so, will cease execution immediately.
+]=]
+function Sandbox:ProcessTermination()
+	if self.Terminated then
+		self:Terminate(true)
+	end
+end
 
 	-- Remove tracked values
 	self.Tracked = nil
