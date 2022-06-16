@@ -514,9 +514,103 @@ local function killThread(thread): boolean
 end
 
 --[=[
-	Checks if the sandbox is supposed to be terminated, and if so, stops execution.
+	Returns the amount of CPU time the sandbox has used.
 ]=]
-function Sandbox:CheckTermination()
+function Sandbox:GetCPUTimeNow()
+	local cpuTime = self.CPUTime
+	local timer = self.Timers[#self.Timers]
+	if timer then
+		cpuTime += os.clock() - timer
+	end
+	return cpuTime
+end
+
+--[=[
+	Returns whether or not the sandbox is running.
+]=]
+function Sandbox:IsRunning()
+	-- We use sandbox timers to determine if the sandbox is running
+	-- If the sandbox has an active timer, it is considered running
+	return if self.Timers[1] then true else false
+end
+
+--[=[
+	Begins measuring the sandbox's execution time.
+	You do not need to call this yourself, it is called automatically.
+]=]
+function Sandbox:BeginTimer()
+	table.insert(self.Timers, os.clock())
+end
+
+--[=[
+	Stops measuring the sandbox's execution time and updates CPUTime.
+	You do not need to call this yourself, it is called automatically.
+]=]
+function Sandbox:EndTimer()
+	if not self:IsRunning() then
+		return
+	end
+	-- Measure execution time and increase CPUTime
+	local timer = table.remove(self.Timers, #self.Timers)
+	if timer then
+		self.CPUTime += os.clock() - timer
+	end
+end
+
+--[=[
+	Calls Sandbox:EndTimer() for all active timers.
+]=]
+function Sandbox:EndAllTimers()
+	-- End all timers
+	while self.Timers[1] do
+		self:EndTimer()
+	end
+end
+
+--[=[
+	Resets all of the sandbox's timers.
+]=]
+function Sandbox:ResetTimers()
+	self.CPUTime = 0
+	self.Timers = {}
+end
+
+--[=[
+	Sets the sandbox's CPU timeout (in seconds) and resets all timers.
+	Passing nil or 0 will remove the configured timeout.
+]=]
+function Sandbox:SetTimeout(timeout: number?)
+	self:ResetTimers()
+	if timeout == nil or timeout == 0 then
+		self.Timeout = nil
+	else
+		self.Timeout = timeout
+	end
+end
+
+--[=[
+	Checks if the sandbox has timed out. If so, it will be terminated immediately.
+	You do not need to call this yourself, it is called automatically.
+]=]
+function Sandbox:CheckTimeout()
+	local timeout = self.Timeout
+	if timeout then
+		-- Measure how much CPU time the sandbox has used, and terminate it if it has run for too long.
+		local cpuTime = self:GetCPUTimeNow()
+		if cpuTime >= timeout then
+			-- Logger:Notice("Sandbox timed out after", cpuTime, "seconds.")
+			self:Terminate()
+		end
+	end
+end
+
+--[=[
+	Do not call this function.
+	This function is called automatically when code inside the sandbox triggers any managed code.
+	It is used to determine if the sandbox needs to terminate/has terminated, and if so, will cease execution immediately.
+]=]
+function Sandbox:ProcessTermination()
+	self:CheckTimeout()
 	if self.Terminated then
 		self:Terminate(true)
 	end
@@ -526,50 +620,40 @@ end
 	Terminates the sandbox and stops code from running.
 ]=]
 function Sandbox:Terminate(terminateCaller: boolean?)
-	if self.Terminated then
-		return
+	if not self.Terminated then
+		self.Terminated = true
+		self:EndAllTimers()
+
+		-- Disable the runner script if it can be
+		local runner = self.BaseRunner
+		local scriptObject = runner.ScriptObject
+
+		if scriptObject:IsA("BaseScript") then
+			scriptObject.Disabled = true
+		end
+
+		-- Get tracked values so we can clean up
+		local tracked = self.Tracked
+		local threads = tracked.Threads
+		local connections = tracked.RBXScriptConnections
+
+		-- Disconnect all event connections
+		for _, connection in ipairs(connections) do
+			connection:Disconnect() -- Disconnect event connection
+		end
+
+		-- Kill all threads
+		for _, thread in ipairs(threads) do
+			killThread(thread)
+		end
+
+		-- Remove tracked values
+		self.Tracked = nil
 	end
-	self.Terminated = true
 
-	-- Disable the runner script if it can be
-	local runner = self.BaseRunner
-	local scriptObject = runner.ScriptObject
-
-	if scriptObject:IsA("BaseScript") then
-		scriptObject.Disabled = true
-	end
-
-	-- Get tracked values so we can clean up
-	local tracked = self.Tracked
-	local threads = tracked.Threads
-	local connections = tracked.RBXScriptConnections
-
-	-- Disconnect all event connections
-	for _, connection in ipairs(connections) do
-		connection:Disconnect() -- Disconnect event connection
-	end
-
-	-- Kill all threads
-	for _, thread in ipairs(threads) do
-		killThread(thread)
-	end
---[=[
-	Do not call this function.
-	This function is called automatically when code inside the sandbox triggers any managed code.
-	It is used to determine if the sandbox needs to terminate/has terminated, and if so, will cease execution immediately.
-]=]
-function Sandbox:ProcessTermination()
-	if self.Terminated then
-		self:Terminate(true)
-	end
-end
-
-	-- Remove tracked values
-	self.Tracked = nil
-
-	-- Terminate the caller if flagged
+	-- Terminate the caller if specified
 	if terminateCaller then
-		error("Thread terminated.")
+		error(nil, 0)
 	end
 end
 
@@ -681,9 +765,25 @@ function Sandbox:TrackThread(thread: thread?)
 	if self.Terminated then
 		return
 	end
+
+	if not thread then
+		thread = coroutine.running()
+		if not self.ThreadTimer then
+			self.ThreadTimer = os.clock()
+			self:BeginTimer() -- Begin a timer for the thread
+			-- Defer and end the thread timer
+			task.defer(function()
+				self.ThreadTimer = nil
+				self:EndTimer()
+			end)
+		end
+	end
+
 	local tracked = self.Tracked
 	local threads = tracked.Threads
-	table.insert(threads, thread or coroutine.running())
+	if not table.find(threads, thread) then
+		table.insert(threads, thread)
+	end
 end
 
 --[=[

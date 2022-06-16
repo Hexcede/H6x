@@ -223,6 +223,8 @@ function Sandbox.new(options)
 	self:AddDefaultSecurityRules()
 	self:AddDefaultRedirects()
 
+	self:ResetTimers()
+
 	return self
 end
 
