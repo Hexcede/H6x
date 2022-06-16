@@ -503,7 +503,7 @@ end
 local function killThread(thread): boolean
 	local status = coroutine.status(thread)
 	if status ~= "dead" then
-		if status == "suspended" then
+		if status == "suspended" or status == "normal" then
 			-- Close the thread
 			coroutine.close(thread)
 		elseif status ~= "running" then
