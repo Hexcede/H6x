@@ -13,7 +13,7 @@ return (function(Runner)
 				callback = sandbox:LoadFunction(callback)
 
 				if sandbox.Terminated then
-					return sandbox:CheckTermination()
+					return
 				end
 			else
 				--if WARN_UNSANDBOXED_RUNNER then
@@ -25,7 +25,7 @@ return (function(Runner)
 			local scriptObject = self.ScriptObject
 			if scriptObject:IsA("BaseScript") then
 				if scriptObject.Disabled then
-					return error("The runner script is disabled so code cannot be executed", 2)
+					return error("Runner script is disabled", 2)
 				end
 			end
 
