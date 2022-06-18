@@ -1,0 +1,8 @@
+[package]
+name = "hexcede/h6x"
+description = "A luau utility for constructing sandboxes to run code within."
+version = "2.1.0"
+license = "MIT"
+authors = ["Hexcede"]
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "shared"
