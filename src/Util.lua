@@ -10,6 +10,10 @@ function Util.copy(tab)
 	return copy
 end
 function Util.isCFunction(func)
+	if type(func) ~= "function" then
+		return false
+	end
+
 	local source, line = debug.info(func, "sl")
 	return source == "[C]" and line == -1
 end
