@@ -28,7 +28,7 @@ return (function(SandboxActivity)
 					local activity = self.Activity
 					local Name = activity.Name
 
-					local nargs, varArg, name, source = debug.info(func, "ans")
+					local nargs, varArg, name, source = if type(func) == "function" then debug.info(func, "ans") else nil, nil, nil, nil
 
 					-- Track the called function's name
 					-- Name:Track(func, name)
