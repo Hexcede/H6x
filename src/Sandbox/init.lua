@@ -177,16 +177,9 @@ function Sandbox:RuleMatches<T>(rule: Rule<T>, value: any): boolean?
 	error("Invalid Rule.Mode", 2)
 end
 
---[=[
-	Sanitizes a value by the sandbox's rules.
-	@return any -- The sanitized value
-]=]
-function Sandbox:Sanitize<T>(value: any, rules: {Rule<T>}?): any
-	if not value or CONST.PRIMITIVES[type(value)] then
-		return value
-	end
-
-	for _, rule in ipairs(rules or self.Rules) do
+-- Helper to process a set of rules one at a time
+local function processRules(self, value: any, rules: {Rule<T>}): (any, boolean?)
+	for _, rule in ipairs(rules) do
 		if self:RuleMatches(rule, value) then
 			if rule.Rule == "Terminate" then
 				self:Terminate(true)
@@ -200,9 +193,43 @@ function Sandbox:Sanitize<T>(value: any, rules: {Rule<T>}?): any
 			elseif rule.Rule == "Inject" then
 				return (rule.Callback(value))
 			elseif rule.Rule == "Proxy" then
-				-- TODO: Create proxy
-				return
+				-- First, export the value
+				local proxy = self:Export(value)
+				-- Re-map rules for proxy
+				self:MapRules(proxy, rule.ProxyRules)
+				-- Import the proxy
+				proxy = self:Import(proxy)
+				-- Lastly, map the value's import to the proxy
+				return (self:WriteImported(value, proxy))
 			end
+		end
+	end
+	return value, true
+end
+
+--[=[
+	Sanitizes a value by the sandbox's rules.
+	@return any -- The sanitized value
+]=]
+function Sandbox:Sanitize<T>(value: any, rules: {Rule<T>}?): any
+	if not value or CONST.PRIMITIVES[type(value)] then
+		return value
+	end
+
+	-- Sets of rules to process
+	local ruleSets = {self.Rules}
+
+	-- If additional rules are specified, insert them to be processed first
+	if rules then
+		table.insert(ruleSets, 1, rules)
+	end
+
+	-- Process each set of rules one at a time until a rule is matched, then break out after a match is found
+	local pass
+	for _, currentRules in ipairs(ruleSets) do
+		value, pass = processRules(self, value, currentRules)
+		if not pass then
+			break
 		end
 	end
 	return value
@@ -825,17 +852,27 @@ function Sandbox:TrackConnection(connection: RBXScriptConnection)
 	table.insert(connections, connection)
 end
 
---[=[
-	Takes an external value and returns a version safe for the sandbox to use.
-]=]
-function Sandbox:Import(value: any)
+function Sandbox:MapRules<T>(value: any, rules: {Rule<T>})
 	value = self:GetClean(value)
-	value = self:Sanitize(value)
 	if CONST.PRIMITIVES[type(value)] then
 		return value
 	end
 
 	local Poison = self.Poison
+	Poison.RuleMap[value] = rules
+end
+
+--[=[
+	Takes an external value and returns a version safe for the sandbox to use.
+]=]
+function Sandbox:Import(value: any)
+	local Poison = self.Poison
+	value = self:GetClean(value)
+	value = self:Sanitize(value, Poison.RuleMap[value])
+	if CONST.PRIMITIVES[type(value)] then
+		return value
+	end
+
 	if not Poison.ToImport[value] then
 		-- Track imported connections
 		if typeof(value) == "RBXScriptConnection" then
@@ -849,13 +886,13 @@ end
 	Takes a value created by the sandbox and returns a safe version of it.
 ]=]
 function Sandbox:Export(value: any)
+	local Poison = self.Poison
 	value = self:GetClean(value)
-	value = self:Sanitize(value)
+	value = self:Sanitize(value, Poison.RuleMap[value])
 	if CONST.PRIMITIVES[type(value)] then
 		return value
 	end
 
-	local Poison = self.Poison
 	if not Poison.ToExport[value] then
 		return self:WriteExported(value, self:CreateProxy(value, self.ExportMetatable))
 	end

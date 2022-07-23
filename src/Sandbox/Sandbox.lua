@@ -95,6 +95,8 @@ function Sandbox.new(options)
 			ToImport = {};
 			ToExport = {};
 			ToClean = {};
+
+			RuleMap = {};
 		},
 		ImportMetatable = {
 			__call = function(object, ...)
