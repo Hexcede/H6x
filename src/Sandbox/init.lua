@@ -28,13 +28,20 @@ function Sandbox:ExecuteString(source: string, ...): ...any
 	return self.BaseRunner:ExecuteString(source, ...)
 end
 
-export type RuleKind = "Terminate" | "Block" | "Allow" | "Redirect" | "Inject"; -- Kinds of actions to take when a matched item is found
+export type RuleKind = -- Kinds of actions to take when a matched item is found
+	"Terminate" | -- Terminates the sandbox on access (Does not provide any special security)
+	"Block" | -- Blocks the item from being accessed
+	"Allow" | -- Allows the item to be accessed immediately, skipping any remaining rules
+	"Redirect" | -- Changes the value into another
+	"Inject" | -- Calls a function which takes the value in and returns the new value
+	"Proxy"; -- Creates a proxy around the value to modify its behaviour
 local RULE_KINDS = {
-	Terminate = "Terminate",
-	Block = "Block",
-	Allow = "Allow",
-	Redirect = "Redirect",
-	Inject = "Inject"
+	Terminate = "Terminate";
+	Block = "Block";
+	Allow = "Allow";
+	Redirect = "Redirect";
+	Inject = "Inject";
+	Proxy = "Proxy";
 }
 export type RuleMode = -- Determines how matches are selected
 	"ByReference" | -- Matches values by reference equality (As table key)
@@ -47,30 +54,43 @@ export type RuleMode = -- Determines how matches are selected
 	"IsDescendantOfExclusive" | -- Matches Instances by IsDescendantOf, excluding the target
 	"ByCallback"; -- Matches values by a callback which takes the value in, and returns a truthy or falsy match
 					-- Note: This can be slow if you're not careful! It's called against all values
+export type ProxyRuleMode = RuleMode |
+	"ByIndex"; -- Matches values by their index on the proxy
 
 -- Set of valid rules
-export type SandboxRule = {
+export type Rule<Mode> = {
 	-- Either blocks or allows a matched value
 	-- Terminate is like Block except it terminates execution of code within the sandbox
 	Rule: "Terminate" | "Block" | "Allow";
-	Mode: RuleMode;
+	Mode: Mode;
 	Order: number?;
 	Target: any;
 } | {
 	-- Redirects matched values to another
 	Rule: "Redirect";
-	Mode: RuleMode;
+	Mode: Mode;
 	Order: number?;
 	Target: any;
 	Replacement: any;
 } | {
 	-- Matches a value & calls a function (sandboxed!) to get a replacement
 	Rule: "Inject";
-	Mode: RuleMode;
+	Mode: Mode;
 	Order: number?;
 	Target: any;
 	Callback: (any) -> any; -- Must accept the input value and return a replacement or terminate the sandbox
+} | {
+	-- Matches a value, and returns a special proxy which is correctly recognized by the sandbox
+	-- The proxy contains a set of sub-rules in its ProxyRules section
+	-- NOTE: The ProxyRules table will be sorted
+	Rule: "Proxy";
+	Mode: Mode;
+	Order: number?;
+	Target: any;
+
+	ProxyRules: { Rule<ProxyRuleMode> };
 }
+export type SandboxRule = Rule<RuleMode>;
 
 --[=[
 	Checks if two references are equal.
@@ -124,7 +144,7 @@ end
 	Checks if a rule matches a given value.
 	@return boolean -- Whether or not the rule matches the value
 ]=]
-function Sandbox:RuleMatches(rule: SandboxRule, value: any): boolean
+function Sandbox:RuleMatches<T>(rule: Rule<T>, value: any): boolean?
 	self:UpdateRuleOrders() -- Update rule orders
 
 	local mode = rule.Mode
@@ -161,12 +181,12 @@ end
 	Sanitizes a value by the sandbox's rules.
 	@return any -- The sanitized value
 ]=]
-function Sandbox:Sanitize(value: any): any
+function Sandbox:Sanitize<T>(value: any, rules: {Rule<T>}?): any
 	if not value or CONST.PRIMITIVES[type(value)] then
 		return value
 	end
 
-	for _, rule in ipairs(self.Rules) do
+	for _, rule in ipairs(rules or self.Rules) do
 		if self:RuleMatches(rule, value) then
 			if rule.Rule == "Terminate" then
 				self:Terminate(true)
@@ -178,7 +198,10 @@ function Sandbox:Sanitize(value: any): any
 			elseif rule.Rule == "Redirect" then
 				return rule.Replacement
 			elseif rule.Rule == "Inject" then
-				return rule.Callback(value)
+				return (rule.Callback(value))
+			elseif rule.Rule == "Proxy" then
+				-- TODO: Create proxy
+				return
 			end
 		end
 	end
