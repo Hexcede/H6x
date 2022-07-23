@@ -72,7 +72,7 @@ function Reflector.new(real, sandbox)
 				sandbox:TrackThread()
 
 				return func(object, real, ...)
-			end)
+			end, self)
 		else
 			self[index] = function(object, ...)
 				return func(object, real, ...)

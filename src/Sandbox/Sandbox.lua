@@ -21,7 +21,7 @@ local function callCFunctionImport(self, func, ...): typeof(table.pack(...))
 	local results = table.pack(func(table.unpack(arguments, 1, arguments.n)))
 	-- Import all results
 	for i=1, results.n do
-		results[i] = self:Import(results[i])
+		results[i] = self:Import(results[i], func)
 	end
 	-- Return the results
 	return results
@@ -51,7 +51,7 @@ local function callFunctionImported(self, func, ...): typeof(table.pack(...))
 	local results = table.pack(func(table.unpack(arguments, 1, arguments.n)))
 	-- Import all results
 	for i=1, results.n do
-		results[i] = self:Import(results[i])
+		results[i] = self:Import(results[i], func)
 	end
 	-- Return the results
 	return results
@@ -60,7 +60,7 @@ local function callFunctionExported(self, func, ...): typeof(table.pack(...))
 	-- Import all arguments
 	local arguments = table.pack(...)
 	for i=1, arguments.n do
-		arguments[i] = self:Import(arguments[i])
+		arguments[i] = self:Import(arguments[i], func)
 	end
 	-- Call the function
 	local results = table.pack(func(table.unpack(arguments, 1, arguments.n)))
@@ -120,7 +120,7 @@ function Sandbox.new(options)
 				local value = if real then real[self:GetClean(index)] else rawget(object, self:GetClean(index))
 
 				self:ActivityEvent("Get", real, index, value)
-				return self:Import(value)
+				return self:Import(value, real)
 			end,
 			__newindex = function(object, index, value)
 				self:ProcessTermination()
@@ -149,7 +149,7 @@ function Sandbox.new(options)
 						end
 					end
 					-- TODO -- self:ActivityEvent("DoneIterating", real)
-				end)), self:Import(real)
+				end), real), self:Import(real, real)
 			end
 			-- __metatable = "The metatable is locked."
 		},

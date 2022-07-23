@@ -89,6 +89,7 @@ export type Rule<Mode> = {
 	Target: any;
 
 	ProxyRules: { Rule<ProxyRuleMode> };
+	Proxy: {[any]: any}?; -- Internal map of values to their rule-specific proxies
 }
 export type SandboxRule = Rule<RuleMode>;
 
@@ -178,7 +179,7 @@ function Sandbox:RuleMatches<T>(rule: Rule<T>, value: any): boolean?
 end
 
 -- Helper to process a set of rules one at a time
-local function processRules(self, value: any, rules: {Rule<T>}): (any, boolean?)
+local function processRules(self, value: any, rules: {Rule<unknown>}, mappedRules: any?): (any, boolean?)
 	for _, rule in ipairs(rules) do
 		if self:RuleMatches(rule, value) then
 			if rule.Rule == "Terminate" then
@@ -193,14 +194,34 @@ local function processRules(self, value: any, rules: {Rule<T>}): (any, boolean?)
 			elseif rule.Rule == "Inject" then
 				return (rule.Callback(value))
 			elseif rule.Rule == "Proxy" then
-				-- First, export the value
-				local proxy = self:Export(value)
+				if mappedRules then
+					continue
+				end
+
+				-- Create Proxy map if it doesn't exist
+				if not rule.Proxy then
+					rule.Proxy = setmetatable({}, {__mode="k"}) :: {[any]: any}
+				end
+				-- Check for an existing proxy in the rule
+				if rule.Proxy[value] then
+					return rule.Proxy[value]
+				end
+
+				-- Create a new proxy
+				local Poison = self.Poison
+				-- First, create an exported version of the value
+				local proxy = self:CreateProxy(value, self.ExportMetatable)
+				Poison.ToClean[proxy] = value
 				-- Re-map rules for proxy
 				self:MapRules(proxy, rule.ProxyRules)
 				-- Import the proxy
-				proxy = self:Import(proxy)
-				-- Lastly, map the value's import to the proxy
-				return (self:WriteImported(value, proxy))
+				proxy = self:Import(proxy, true)
+				-- Map proxy -> clean
+				Poison.ToClean[proxy] = value
+
+				-- Return the proxy and store it on the rule
+				rule.Proxy[value] = proxy
+				return proxy
 			end
 		end
 	end
@@ -211,7 +232,7 @@ end
 	Sanitizes a value by the sandbox's rules.
 	@return any -- The sanitized value
 ]=]
-function Sandbox:Sanitize<T>(value: any, rules: {Rule<T>}?): any
+function Sandbox:Sanitize(value: any, proxy: any?): any
 	if not value or CONST.PRIMITIVES[type(value)] then
 		return value
 	end
@@ -220,14 +241,15 @@ function Sandbox:Sanitize<T>(value: any, rules: {Rule<T>}?): any
 	local ruleSets = {self.Rules}
 
 	-- If additional rules are specified, insert them to be processed first
-	if rules then
-		table.insert(ruleSets, 1, rules)
+	local mappedRules = if proxy then self.Poison.RuleMap[proxy] else nil
+	if mappedRules then
+		table.insert(ruleSets, 1, mappedRules)
 	end
 
 	-- Process each set of rules one at a time until a rule is matched, then break out after a match is found
 	local pass
 	for _, currentRules in ipairs(ruleSets) do
-		value, pass = processRules(self, value, currentRules)
+		value, pass = processRules(self, value, currentRules, mappedRules or rawequal(proxy, true))
 		if not pass then
 			break
 		end
@@ -859,20 +881,22 @@ function Sandbox:MapRules<T>(value: any, rules: {Rule<T>})
 	end
 
 	local Poison = self.Poison
-	Poison.RuleMap[value] = rules
+	if not Poison.RuleMap[value] then
+		Poison.RuleMap[value] = rules
+	end
 end
 
 --[=[
 	Takes an external value and returns a version safe for the sandbox to use.
 ]=]
-function Sandbox:Import(value: any)
-	local Poison = self.Poison
+function Sandbox:Import(value: any, proxy: any?)
 	value = self:GetClean(value)
-	value = self:Sanitize(value, Poison.RuleMap[value])
+	value = self:Sanitize(value, proxy)
 	if CONST.PRIMITIVES[type(value)] then
 		return value
 	end
 
+	local Poison = self.Poison
 	if not Poison.ToImport[value] then
 		-- Track imported connections
 		if typeof(value) == "RBXScriptConnection" then
@@ -886,13 +910,13 @@ end
 	Takes a value created by the sandbox and returns a safe version of it.
 ]=]
 function Sandbox:Export(value: any)
-	local Poison = self.Poison
 	value = self:GetClean(value)
-	value = self:Sanitize(value, Poison.RuleMap[value])
+	value = self:Sanitize(value)
 	if CONST.PRIMITIVES[type(value)] then
 		return value
 	end
 
+	local Poison = self.Poison
 	if not Poison.ToExport[value] then
 		return self:WriteExported(value, self:CreateProxy(value, self.ExportMetatable))
 	end
