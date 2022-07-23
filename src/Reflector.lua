@@ -67,23 +67,12 @@ function Reflector.new(real, sandbox)
 		end
 
 		if sandbox then
-			if sandbox.BaseEnvironment then
-				self[index] = sandbox:Import(function(object, ...)
-					return func(object, real, ...)
-				end)
-			else
-				self[index] = function(...)
-					if sandbox.BaseEnvironment then
-						self[index] = sandbox:Import(function(object, ...)
-							return func(object, real, ...)
-						end)
-						return self[index](...)
-					else
-						--warn(LOG_PREFIX, "Failed to retrieve sandbox environment for reflector imports")
-						Logger:Warn("Failed to retrieve sandbox environment for reflector imports.")
-					end
-				end
-			end
+			self[index] = sandbox:Import(function(object, ...)
+				sandbox:ProcessTermination()
+				sandbox:TrackThread()
+
+				return func(object, real, ...)
+			end)
 		else
 			self[index] = function(object, ...)
 				return func(object, real, ...)
