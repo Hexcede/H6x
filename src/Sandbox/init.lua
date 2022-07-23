@@ -44,7 +44,9 @@ export type RuleMode = -- Determines how matches are selected
 	"IsDescendantOfInclusive" | -- Matches Instances by IsDescendantOf, including the target
 	"IsAncestorOfInclusive" | -- Matches Instances by IsAncestorOf, including the target
 	"IsAncestorOfExclusive" | -- Matches Instances by IsAncestorOf, excluding the target
-	"IsDescendantOfExclusive"; -- Matches Instances by IsDescendantOf, excluding the target
+	"IsDescendantOfExclusive" | -- Matches Instances by IsDescendantOf, excluding the target
+	"ByCallback"; -- Matches values by a callback which takes the value in, and returns a truthy or falsy match
+					-- Note: This can be slow if you're not careful! It's called against all values
 
 -- Set of valid rules
 export type SandboxRule = {
@@ -149,9 +151,10 @@ function Sandbox:RuleMatches(rule: SandboxRule, value: any): boolean
 		return typeof(value) == "Instance" and target:IsAncestorOf(value)
 	elseif mode == "IsAncestorOfExclusive" then
 		return typeof(value) == "Instance" and target:IsDescendantOf(value)
-	else
-		error("Invalid SandboxRule.Mode", 2)
+	elseif mode == "ByCallback" then
+		return if target(value, rule) then true else false
 	end
+	error("Invalid Rule.Mode", 2)
 end
 
 --[=[
