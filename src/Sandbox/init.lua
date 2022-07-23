@@ -170,6 +170,7 @@ function Sandbox:Sanitize(value: any): any
 		if self:RuleMatches(rule, value) then
 			if rule.Rule == "Terminate" then
 				self:Terminate(true)
+				return nil
 			elseif rule.Rule == "Block" then
 				return nil
 			elseif rule.Rule == "Allow" then
