@@ -102,7 +102,7 @@ function Reflector.from(real, meta, sandbox)
 	for index, value in pairs(meta) do
 		reflector[index] = value
 	end
-	return reflector
+	return table.freeze(reflector)
 end
 
 return Reflector
