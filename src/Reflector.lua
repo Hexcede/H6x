@@ -50,9 +50,10 @@ end
 function Reflector:__le(real, value)
 	return real <= value
 end
-function Reflector:__len(real)
-	return #real
-end
+-- TODO: Re-implement properly (Breaks H6x with new __len changes)
+-- function Reflector:__len(real)
+-- 	return #real
+-- end
 
 function Reflector.new(real, sandbox)
 	local self = {}
