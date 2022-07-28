@@ -148,6 +148,13 @@ function Sandbox.new(options)
 					end
 					-- TODO -- self:ActivityEvent("DoneIterating", real)
 				end)), self:Import(real)
+			end,
+			__len = function(object)
+				self:ProcessTermination()
+				self:TrackThread()
+
+				local real = self:GetClean(object)
+				return #real
 			end
 			-- __metatable = "The metatable is locked."
 		},
@@ -201,6 +208,13 @@ function Sandbox.new(options)
 					end
 					-- TODO -- self:ActivityEvent("DoneIterating", real)
 				end), real
+			end,
+			__len = function(object)
+				self:ProcessTermination()
+				self:TrackThread()
+
+				local real = self:GetClean(object)
+				return #real
 			end
 			-- __metatable = "The metatable is locked."
 		}
